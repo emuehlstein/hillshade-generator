@@ -1,0 +1,284 @@
+# Scripted Relief
+
+**Beautiful hillshade maps from real-world terrain data, generated with a single command.**
+
+Scripted Relief turns raw DEM (Digital Elevation Model) data into styled, publication-quality hillshade tiles. Run it locally on your Mac or Linux machine.
+
+```bash
+# Generate a dark hillshade of Mt. Rainier
+scripted-relief run --bbox "-121.85,46.72,-121.65,46.92" \
+  --theme midnight --zoom 10-16 --output rainier.pmtiles
+```
+
+→ [**scriptedrelief.com**](https://scriptedrelief.com) — browse the community library
+
+---
+
+## What It Does
+
+1. **Acquires** terrain data from public DEM sources (USGS 3DEP, Copernicus, SRTM, state LiDAR programs)
+2. **Processes** with configurable vertical exaggeration, shading modes, and composite blending
+3. **Styles** using a theme system: 15+ built-in themes, easy JSON-based custom themes, community submissions welcome
+4. **Outputs** PMTiles (serverless web maps), MBTiles (offline/ATAK), and reusable intermediates
+
+## Quick Start
+
+### Install
+
+```bash
+# Requires Python 3.10+ and GDAL
+pip install scripted-relief
+
+# Or from source
+git clone https://github.com/emuehlstein/hillshade-generator.git
+cd hillshade-generator
+pip install -e .
+```
+
+### Dependencies
+
+- **Python 3.10+**
+- **GDAL 3.6+** with Python bindings (`brew install gdal` / `apt install gdal-bin python3-gdal`)
+- **pmtiles** CLI (optional, for PMTiles conversion): `pip install pmtiles`
+
+### Generate Your First Hillshade
+
+```bash
+# By bounding box
+scripted-relief run --bbox "-105.35,39.6,-105.15,39.8" --theme midnight
+
+# By named place (geocodes automatically)
+scripted-relief run --place "Mt. St. Helens" --theme desert-sun --zoom 8-16
+
+# By county/state (US, uses Census boundaries)
+scripted-relief run --county cook --state IL --theme flat-terrain
+```
+
+### Browse Themes
+
+```bash
+scripted-relief themes                     # list all themes
+scripted-relief themes --show midnight     # details + preview link
+scripted-relief themes --tag elevation     # filter by tag
+```
+
+### Preview Locally
+
+```bash
+scripted-relief view ./output/ --port 9999   # opens a local MapLibre viewer
+```
+
+---
+
+## Themes
+
+Themes are the heart of Scripted Relief. Each theme bundles shading mode, color ramp, exaggeration strategy, and blending parameters into a single named preset.
+
+### Built-in Themes
+
+| Theme | Style | Best For |
+|-------|-------|----------|
+| `midnight` | Deep blue-black with subtle terrain | Dark basemaps, overlays |
+| `daylight` | Warm grey with soft shadows | Light basemaps, print |
+| `tactical` | Muted green-brown, high contrast | Military/outdoor overlays |
+| `terrain` | Hypsometric tints (green→brown→white) | Educational, reference |
+| `simmon` | Robert Simmon's composite technique | Publication-quality relief |
+| `flat-terrain` | Heavy exaggeration for subtle landscapes | Great Plains, coastal, IL |
+| `desert-sun` | Rust canyons → sandy mesas → white peaks | Arid landscapes |
+| `alpine-glacier` | Deep indigo → teal → icy white | Volcanic peaks, heavy relief |
+| `infrared` | False-color thermal palette | Dramatic visualization |
+| `vivid` | Saturated blue→green→orange→red | Maximum feature contrast |
+| `cool` | Desaturated blue-grey, cartographic | Professional base layers |
+| `grayscale` | Pure hillshade, no color | Custom coloring base layer |
+
+### Custom Themes
+
+Create a JSON file:
+
+```json
+{
+  "name": "my-custom-theme",
+  "description": "A warm amber hillshade",
+  "ramp": "path/to/ramp.txt",
+  "shading": "composite",
+  "composite_weights": [0.6, 0.3, 0.1],
+  "exaggeration": "auto",
+  "terrain_type": "auto",
+  "aspect_blend": 0.1,
+  "tags": ["warm", "custom"]
+}
+```
+
+```bash
+scripted-relief run --place "Grand Canyon" --theme ./my-custom-theme.json
+```
+
+### Color Ramps
+
+Color ramps are GDAL color-relief format (one elevation→RGBA mapping per line). Drop a `.txt` file in `themes/ramps/` or reference an absolute path in your theme JSON.
+
+```
+0%   20  20  40  255
+25%  40  60  100 255
+50%  80  90  110 255
+75%  140 145 155 255
+100% 220 220 230 255
+```
+
+### Submit a Theme
+
+We welcome community themes! See [CONTRIBUTING.md](CONTRIBUTING.md) for the submission process — essentially: add your ramp file + theme JSON, include a sample render, and open a PR.
+
+---
+
+## DEM Sources
+
+Scripted Relief auto-selects the best available DEM source for your area, or you can specify one explicitly.
+
+| Source | Resolution | Coverage | Auto-Download |
+|--------|-----------|----------|---------------|
+| **USGS 3DEP 1/3 arc-sec** | ~10m | CONUS | ✅ |
+| **USGS 3DEP 1m** | 1m | Partial US (LiDAR) | ✅ |
+| **Copernicus DEM** | 30m | Global | ✅ |
+| **SRTM** | 30m/90m | ±60° latitude | ✅ |
+| **State LiDAR** | 1ft–1m | Varies by state | 🔧 Catalog-based |
+| **Local file** | Any | Any | N/A |
+
+```bash
+# Auto-select (picks best available resolution)
+scripted-relief run --place "Denali" --theme alpine-glacier
+
+# Force a specific source
+scripted-relief run --bbox "..." --dem usgs-3dep-1m --theme midnight
+
+# Use a local DEM file
+scripted-relief run --dem ./my-dem.tif --theme simmon
+```
+
+### Adding DEM Sources
+
+DEM sources are defined as catalog entries. New sources can be added by implementing a simple downloader interface — see [docs/dem-sources.md](docs/dem-sources.md).
+
+---
+
+## Output Formats
+
+| Format | Use Case | Default |
+|--------|----------|---------|
+| **PMTiles** | Serverless web maps (S3/CloudFront, no tile server) | ✅ |
+| **MBTiles** | Offline maps, ATAK, mbtileserver | ✅ |
+| **Directory** | XYZ tile directory (`{z}/{x}/{y}.png`) | `--format dir` |
+| **GeoTIFF** | Intermediate styled raster (for GIS workflows) | `--keep-intermediates` |
+
+```bash
+# PMTiles only (default)
+scripted-relief run --place "Yosemite" --theme simmon
+
+# MBTiles for ATAK
+scripted-relief run --place "Yosemite" --theme tactical --format mbtiles
+
+# Both
+scripted-relief run --place "Yosemite" --theme simmon --format pmtiles,mbtiles
+
+# Keep intermediates locally (reprojected DEM, grayscale hillshade, styled raster)
+scripted-relief run --place "Yosemite" --theme simmon --keep-intermediates
+
+# Skip the public cache (fully offline)
+scripted-relief run --place "Yosemite" --theme simmon --no-cache
+```
+
+---
+
+## Sharing & Publishing
+
+### Public Intermediate Cache
+
+Scripted Relief ships with a built-in public cache at `s3://scriptedrelief-data/`. Every run automatically checks the cache before downloading or processing — **no config, no auth, no AWS account needed.**
+
+The source DEMs are all public domain (USGS, Copernicus, SRTM), so the derived intermediates are too. The more people use Scripted Relief, the fuller the cache gets, and the faster it is for everyone.
+
+```bash
+# This just works — pulls cached intermediates automatically
+scripted-relief run --place "Crater Lake" --theme midnight
+
+# Second run with a different theme reuses the cached DEM and reprojection
+scripted-relief run --place "Crater Lake" --theme alpine-glacier
+
+# Fully offline (skip cache reads)
+scripted-relief run --place "Crater Lake" --theme midnight --no-cache
+
+# Point at your own private S3 bucket instead
+scripted-relief run --place "Crater Lake" --theme midnight --s3-cache s3://my-bucket/
+```
+
+The cache is read-through with deterministic keys — same area + source + parameters = same cache key. If anyone has ever generated Crater Lake at 3x exaggeration, you skip the DEM download and reprojection entirely and start from the cached grayscale hillshade.
+
+### Contribute Your Intermediates
+
+Help the community by sharing your cached intermediates back:
+
+```bash
+# Generate AND upload your intermediates to the public cache
+scripted-relief run --place "Denali" --theme midnight --contribute
+```
+
+No AWS credentials needed — uploads use short-lived presigned URLs. An automated validation pipeline checks format, bounds, and data integrity before promoting files to the public cache. See [docs/submission.md](docs/submission.md) for details.
+
+### Publish to scriptedrelief.com
+
+Push your locally-generated hillshade to the public library:
+
+```bash
+scripted-relief publish ./output/crater-lake-alpine-glacier.pmtiles
+```
+
+The CLI validates your file locally, uploads it to staging, and opens a GitHub PR for review. Once merged, tiles go live on scriptedrelief.com automatically. See [docs/submission.md](docs/submission.md) for the full submission and validation process.
+
+### Community Library
+
+The web viewer at [scriptedrelief.com](https://scriptedrelief.com) lets you:
+- Pan/zoom any published hillshade
+- Switch themes on the same region
+- Compare exaggeration levels
+- Download MBTiles for offline use
+
+---
+
+## Architecture
+
+See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for the full system design, including:
+
+- Processing pipeline stages
+- Caching strategy (DEM → grayscale → styled → tiled)
+- Theme system internals
+- DEM source catalog design
+
+See [docs/submission.md](docs/submission.md) for how community contributions (intermediates and PMTiles) are submitted, validated, and promoted.
+
+---
+
+## Project Lineage
+
+Scripted Relief is the successor to [ilhmp](https://github.com/emuehlstein/illinois-hillshade-gen) (Illinois Height Modernization Project), which started as an Illinois-specific hillshade generator for ATAK offline map packages. The lessons learned from generating 23GB of tiles across 15+ regions informed this broader, source-agnostic platform.
+
+Key improvements over ilhmp:
+- **Global DEM support** — not locked to Illinois/ISGS
+- **Theme-first design** — themes are portable, shareable, and the primary user-facing concept
+- **PMTiles-native** — serverless delivery as the default, not an afterthought
+- **Community library** — shared public gallery at scriptedrelief.com
+- **One-liner CLI** — `--place` geocoding, auto DEM selection, zero config for simple cases
+- **Local-first** — runs entirely on your machine with no cloud dependencies
+
+---
+
+## License
+
+MIT
+
+---
+
+## Links
+
+- **Website:** [scriptedrelief.com](https://scriptedrelief.com)
+- **GitHub:** [emuehlstein/hillshade-generator](https://github.com/emuehlstein/hillshade-generator)
+- **ilhmp (predecessor):** [emuehlstein/illinois-hillshade-gen](https://github.com/emuehlstein/illinois-hillshade-gen)
