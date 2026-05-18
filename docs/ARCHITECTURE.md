@@ -313,16 +313,52 @@ Priority: project-local > user dir > built-in (allows overriding built-ins).
 
 ```
 hillgen
-├── run          Generate hillshade tiles
+├── run          Full pipeline (acquire → package) — convenience wrapper
+├── fetch        Download + cache DEM only (no processing)
+├── reproject    Reproject a cached DEM to EPSG:4326
+├── shade        Generate grayscale hillshade from reprojected DEM
+├── style        Apply theme (color ramp + blending) to a hillshade
+├── tile         Cut styled raster into tiles (XYZ directory)
+├── package      Pack tile directory into MBTiles and/or PMTiles
 ├── themes       List/show/validate themes
 ├── sources      List available DEM sources
 ├── view         Local Leaflet tile viewer
 ├── publish      Upload to community library
-├── cache        Manage local cache
+├── cache        Manage local + S3 cache
 │   ├── status   Show cache size and contents
 │   ├── clean    Remove stale intermediates
 │   └── pull     Pre-fetch DEM for an area
 └── version      Show version and GDAL info
+```
+
+`run` is sugar — it calls `fetch → reproject → shade → style → tile → package` in sequence, skipping any stage with a valid cache hit. Each subcommand is independently useful:
+
+```bash
+# Just grab the DEM and cache it (planning, bandwidth window)
+hillgen fetch --place "Mt. Hood" --dem usgs-3dep-10m
+
+# Generate the grayscale hillshade (bottleneck step, want to inspect)
+hillgen shade --place "Mt. Hood" --exaggeration 9
+
+# Try a different theme on an existing hillshade (seconds, no re-shade)
+hillgen style --place "Mt. Hood" --theme midnight --exaggeration 9
+
+# Re-tile at different zoom range without re-styling
+hillgen tile --place "Mt. Hood" --theme midnight --exaggeration 9 --zoom 8-18
+
+# Full pipeline in one shot
+hillgen run --place "Mt. Hood" --theme midnight
+```
+
+Each subcommand picks up from the cache — if the previous stage's output exists, it uses it. If not, it runs the prerequisite stages first. So `hillgen style` with no cached hillshade will fetch + reproject + shade automatically, then apply the theme.
+
+**Pipeline stage flags for `run`:**
+
+`run` also accepts stage-limiting flags for when you want partial execution without remembering subcommand names:
+
+```bash
+hillgen run --place "Mt. Hood" --theme midnight --stop-after shade
+hillgen run --place "Mt. Hood" --theme midnight --start-from style
 ```
 
 ### Area Specification
@@ -483,7 +519,7 @@ hillshade-generator/
 │   └── assets/
 ├── hillgen/             # Python package
 │   ├── __init__.py
-│   ├── cli.py                   # Click CLI entry point
+│   ├── cli.py                   # Click CLI entry point (run, fetch, shade, style, tile, package)
 │   ├── pipeline/
 │   │   ├── __init__.py
 │   │   ├── acquire.py           # DEM download + merge

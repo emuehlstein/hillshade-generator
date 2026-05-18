@@ -62,6 +62,29 @@ hillgen themes --show midnight     # details + preview link
 hillgen themes --tag elevation     # filter by tag
 ```
 
+### Step-by-Step Control
+
+Each pipeline stage is a standalone subcommand. Run one at a time or let `run` do them all:
+
+```bash
+# Just download and cache the DEM (no processing)
+hillgen fetch --place "Mt. Hood" --dem usgs-3dep-10m
+
+# Generate grayscale hillshade only (the expensive step)
+hillgen shade --place "Mt. Hood" --exaggeration 9
+
+# Apply a theme to an existing hillshade (seconds)
+hillgen style --place "Mt. Hood" --theme midnight --exaggeration 9
+
+# Re-tile at a different zoom without re-processing
+hillgen tile --place "Mt. Hood" --theme midnight --zoom 8-18
+
+# Package tiles into MBTiles/PMTiles
+hillgen package --place "Mt. Hood" --theme midnight
+```
+
+Each subcommand picks up from the cache — if a previous stage's output exists, it's reused automatically.
+
 ### Preview Locally
 
 ```bash
