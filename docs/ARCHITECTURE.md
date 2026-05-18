@@ -46,12 +46,18 @@ Stage 1: Reproject
     │
     ▼
 Stage 2: Compute Hillshade
-    │  gdaldem hillshade with configured mode:
-    │    - standard (single azimuth)
-    │    - multidirectional (GDAL -multidirectional)
-    │    - composite (weighted: multi 60% + igor 30% + combined 10%)
+    │  gdaldem hillshade — one pass per shading mode:
+    │    - standard: single azimuth (315°)
+    │    - multidirectional: GDAL -multidirectional
+    │    - igor: oblique-angle variant
+    │    - combined: multi-light approach
     │  Apply vertical exaggeration (fixed or auto-computed)
-    │  ★ Cache key: {area}_{source}_gray_{exag}x.tif
+    │  Each pass cached independently:
+    │    ★ {area}_{source}_gray_multi_{exag}x.tif
+    │    ★ {area}_{source}_gray_igor_{exag}x.tif
+    │    ★ {area}_{source}_gray_combined_{exag}x.tif
+    │  Composite themes blend cached sub-layers (cheap numpy math):
+    │    ★ {area}_{source}_gray_composite_{weights}_{exag}x.tif
     │
     ▼
 Stage 3: Apply Theme
@@ -80,21 +86,27 @@ Stage 5: Package
 The pipeline is designed around aggressive intermediate caching. The DEM is the most expensive artifact — everything downstream is increasingly cheap to regenerate.
 
 ```
-Level 0: Raw DEM download              ← minutes to hours, never recompute
-  Level 1: Reprojected to EPSG:4326    ← minutes, reuse across all themes
-    Level 2: Grayscale hillshade @ Nx   ← minutes, reuse across themes at same exag
-      Level 3: Styled raster            ← seconds, cheap
-        Level 4: MBTiles                ← minutes, canonical format
-          Level 5: PMTiles              ← seconds, derived for web
+Level 0: Raw DEM download                   ← minutes to hours, never recompute
+  Level 1: Reprojected to EPSG:4326          ← minutes, reuse across all themes
+    Level 2a: Shading sub-layers @ Nx        ← minutes each, cached per mode+exag
+              (multi, igor, combined)            reuse across themes at same exag
+    Level 2b: Blended composite              ← seconds (numpy weighted sum of 2a)
+      Level 3: Styled raster                 ← seconds, cheap
+        Level 4: MBTiles                     ← minutes, canonical format
+          Level 5: PMTiles                   ← seconds, derived for web
 ```
 
 **Reuse patterns:**
 | Change | Reuses from |
 |--------|-------------|
-| Different theme, same exag | Level 2 (grayscale) |
+| Different theme, same exag + same shading mode | Level 2a (sub-layers) |
+| Different composite weights, same exag | Level 2a (sub-layers, re-blend only) |
+| Different theme, same exag, non-composite | Level 2a (single sub-layer) |
 | Different exaggeration | Level 1 (reprojected DEM) |
 | Different DEM source | Nothing — full reprocess |
 | Different zoom range only | Level 3 (styled raster) |
+
+The key insight: `gdaldem hillshade` is the expensive part of Stage 2. The blend is just a weighted sum of three arrays. By caching multi/igor/combined independently, changing composite weights or switching between a composite theme and a pure-multidirectional theme never re-runs `gdaldem`.
 
 ### Cache Storage
 
@@ -121,7 +133,10 @@ cache/                                   # same layout locally and in S3
 ├── reprojected/
 │   └── {area}_{source}_4326.tif
 ├── hillshade/
-│   └── {area}_{source}_gray_{exag}x.tif
+│   ├── {area}_{source}_gray_multi_{exag}x.tif
+│   ├── {area}_{source}_gray_igor_{exag}x.tif
+│   ├── {area}_{source}_gray_combined_{exag}x.tif
+│   └── {area}_{source}_gray_composite_{weights}_{exag}x.tif
 ├── styled/
 │   └── {area}_{theme}_{exag}x.tif
 └── manifest.json              # index of what's cached, checksums, timestamps
@@ -136,7 +151,7 @@ s3://scriptedrelief-data/                      # public-read — shared cache + 
 ├── cache/                               # mirrors local cache layout
 │   ├── dem/
 │   ├── reprojected/
-│   ├── hillshade/
+│   ├── hillshade/                       # sub-layers: multi, igor, combined, composite
 │   └── styled/
 ├── mbtiles/                             # final mbtiles outputs
 │   └── {area}-{theme}-{exag}x.mbtiles

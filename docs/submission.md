@@ -80,11 +80,12 @@ Every uploaded intermediate passes through a validation Lambda before promotion 
 - [ ] Data type = Float32 or Float64
 - [ ] No-data value is set
 
-**Grayscale hillshades** (`hillshade/{area}_{source}_gray_{exag}x.tif`):
+**Grayscale hillshade sub-layers** (`hillshade/{area}_{source}_gray_{mode}_{exag}x.tif`):
 - [ ] CRS is EPSG:4326
 - [ ] Band count = 1
 - [ ] Data type = Byte (0-255)
 - [ ] Pixel values span a reasonable range (not all 0, not all 255)
+- [ ] Mode suffix is one of: `multi`, `igor`, `combined`, or `composite_{weights}`
 
 **Styled rasters** (`styled/{area}_{theme}_{exag}x.tif`):
 - [ ] CRS is EPSG:4326
