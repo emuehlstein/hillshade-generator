@@ -1,9 +1,9 @@
-# Contributing to Scripted Relief
+# Contributing to Hillgen
 
 There are several ways to contribute:
 
 - **Share intermediates** — run with `--contribute` to upload cached DEMs and hillshades to the public cache, accelerating future runs for everyone. No review needed; automated validation handles it.
-- **Publish a hillshade** — run `scripted-relief publish` to submit a finished PMTiles to the scriptedrelief.com library. Goes through a PR-based review.
+- **Publish a hillshade** — run `hillgen publish` to submit a finished PMTiles to the scriptedrelief.com library. Goes through a PR-based review.
 - **Submit a theme** — add a new color ramp and theme preset (see below).
 - **Add a DEM source** — register a new elevation data provider.
 
@@ -15,8 +15,8 @@ See [docs/submission.md](docs/submission.md) for full details on the intermediat
 
 The easiest way to contribute is a new theme. A theme submission needs:
 
-1. **A color ramp file** (`.txt`, GDAL color-relief format) in `scripted_relief/themes/ramps/`
-2. **A theme JSON** in `scripted_relief/themes/builtin/`
+1. **A color ramp file** (`.txt`, GDAL color-relief format) in `hillgen/themes/ramps/`
+2. **A theme JSON** in `hillgen/themes/builtin/`
 3. **A sample render** — at least one screenshot or PMTiles preview showing the theme on real terrain
 4. **A description** — what terrain/use case is it designed for?
 
@@ -54,7 +54,7 @@ The easiest way to contribute is a new theme. A theme submission needs:
 
 To add a new data source (e.g., a national LiDAR program or commercial DEM):
 
-1. Create a new module in `scripted_relief/sources/`
+1. Create a new module in `hillgen/sources/`
 2. Implement the `DEMSource` interface (see `sources/base.py`)
 3. Register it in `sources/__init__.py`
 4. Add tests in `tests/test_sources.py`
@@ -65,7 +65,7 @@ To add a new data source (e.g., a national LiDAR program or commercial DEM):
 Open an issue with:
 - What you ran (full command)
 - What happened (error message or screenshot)
-- Your environment (`scripted-relief version` output)
+- Your environment (`hillgen version` output)
 - The area/theme that triggered the issue
 
 ## Development Setup

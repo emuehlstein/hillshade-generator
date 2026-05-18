@@ -2,7 +2,7 @@
 
 ## System Overview
 
-Scripted Relief is a local-first hillshade generation tool with an optional community library.
+Hillgen is a local-first hillshade generation tool with an optional community library.
 
 1. **Local CLI** — run on your Mac/Linux machine
 2. **Community library** — scriptedrelief.com hosts published tiles for browsing
@@ -11,7 +11,7 @@ Scripted Relief is a local-first hillshade generation tool with an optional comm
 ┌─────────────────────────────────────────────────────────────┐
 │                      User's Machine                         │
 │                                                             │
-│  scripted-relief run --place "Crater Lake" --theme ...      │
+│  hillgen run --place "Crater Lake" --theme ...      │
 │       │                                                     │
 │       ▼                                                     │
 │  ┌─────────┐   ┌──────────┐   ┌───────────────────────┐   │
@@ -20,10 +20,10 @@ Scripted Relief is a local-first hillshade generation tool with an optional comm
 │  └─────────┘   └──────────┘   └───────────────────────┘   │
 │       │                                                     │
 │       ▼                                                     │
-│  ~/.scripted-relief/cache/        (reusable intermediates)  │
+│  ~/.hillgen/cache/        (reusable intermediates)  │
 │       │                                                     │
 │       ▼  optional                                           │
-│  scripted-relief publish ──▶ scriptedrelief.com             │
+│  hillgen publish ──▶ scriptedrelief.com             │
 └─────────────────────────────────────────────────────────────┘
 ```
 
@@ -100,7 +100,7 @@ Level 0: Raw DEM download              ← minutes to hours, never recompute
 
 Two cache layers, same layout, checked in order:
 
-1. **Local** `~/.scripted-relief/cache/` — always on, fastest
+1. **Local** `~/.hillgen/cache/` — always on, fastest
 2. **Public S3** `s3://scriptedrelief-data/` — on by default, shared across all users
 
 **No AWS credentials required.** The `scriptedrelief-data` bucket is public-read. The CLI fetches cached intermediates over anonymous HTTPS — same as downloading a DEM from USGS, just faster because it's already reprojected and ready.
@@ -283,9 +283,9 @@ Ramps use GDAL color-relief syntax. Two modes:
 ### Theme Discovery
 
 ```
-~/.scripted-relief/themes/         # user custom themes
+~/.hillgen/themes/         # user custom themes
 ./themes/                          # project-local themes
-scripted_relief/themes/builtin/    # package built-ins
+hillgen/themes/builtin/    # package built-ins
 ```
 
 Priority: project-local > user dir > built-in (allows overriding built-ins).
@@ -297,7 +297,7 @@ Priority: project-local > user dir > built-in (allows overriding built-ins).
 ### Command Structure
 
 ```
-scripted-relief
+hillgen
 ├── run          Generate hillshade tiles
 ├── themes       List/show/validate themes
 ├── sources      List available DEM sources
@@ -326,18 +326,18 @@ Three ways to define the target area (exactly one required):
 
 ```bash
 # Default: PMTiles in ./output/
-scripted-relief run --place "..." --theme midnight
+hillgen run --place "..." --theme midnight
 
 # Custom output
-scripted-relief run --place "..." --theme midnight \
+hillgen run --place "..." --theme midnight \
   --output ~/maps/rainier.pmtiles
 
 # Multiple formats
-scripted-relief run --place "..." --theme midnight \
+hillgen run --place "..." --theme midnight \
   --format pmtiles,mbtiles
 
 # Keep intermediates for debugging/reuse
-scripted-relief run --place "..." --theme midnight \
+hillgen run --place "..." --theme midnight \
   --keep-intermediates
 ```
 
@@ -348,7 +348,7 @@ scripted-relief run --place "..." --theme midnight \
 The `publish` command takes a locally-generated hillshade and makes it available on scriptedrelief.com:
 
 ```bash
-scripted-relief publish ./output/crater-lake-alpine-glacier.pmtiles
+hillgen publish ./output/crater-lake-alpine-glacier.pmtiles
 ```
 
 **What it does:**
@@ -360,7 +360,7 @@ scripted-relief publish ./output/crater-lake-alpine-glacier.pmtiles
 **Auth:** No AWS credentials needed for contributors. The CLI uses presigned URLs for uploads and opens a GitHub PR for review. See [submission.md](submission.md) for the full submission pipeline, validation checks, and infrastructure details.
 
 **Intermediate sharing vs publishing:**
-The S3 cache (`scriptedrelief-data`) is public-read — anyone running `scripted-relief run` automatically pulls cached intermediates with zero auth. Publishing puts the *final rendered PMTiles* into the separate `scriptedrelief` bucket for web viewing on scriptedrelief.com.
+The S3 cache (`scriptedrelief-data`) is public-read — anyone running `hillgen run` automatically pulls cached intermediates with zero auth. Publishing puts the *final rendered PMTiles* into the separate `scriptedrelief` bucket for web viewing on scriptedrelief.com.
 
 ```
 Local generation          S3 cache (public-read)       Public library
@@ -419,16 +419,16 @@ publish         ─────────────────────�
 
 ## Migration from ilhmp
 
-Scripted Relief inherits and generalizes ilhmp's battle-tested components:
+Hillgen inherits and generalizes ilhmp's battle-tested components:
 
-| ilhmp Component | Scripted Relief Equivalent | Changes |
+| ilhmp Component | Hillgen Equivalent | Changes |
 |---|---|---|
-| `ilhmp run <county>` | `scripted-relief run --county <name> --state IL` | Generalized to any area |
-| `ilhmp/themes.py` | `scripted_relief/themes/` | Same dataclass, expanded registry |
-| `ilhmp/ramps/*.txt` | `scripted_relief/themes/ramps/` | Direct copy, add new ramps |
-| `ilhmp/counties.py` | `scripted_relief/sources/isgs.py` | Becomes one DEM source of many |
-| `ilhmp/tile.py` | `scripted_relief/pipeline/tiler.py` | Same gdal2tiles approach |
-| ISGS-specific download | `scripted_relief/sources/` plugin system | Source-agnostic |
+| `ilhmp run <county>` | `hillgen run --county <name> --state IL` | Generalized to any area |
+| `ilhmp/themes.py` | `hillgen/themes/` | Same dataclass, expanded registry |
+| `ilhmp/ramps/*.txt` | `hillgen/themes/ramps/` | Direct copy, add new ramps |
+| `ilhmp/counties.py` | `hillgen/sources/isgs.py` | Becomes one DEM source of many |
+| `ilhmp/tile.py` | `hillgen/pipeline/tiler.py` | Same gdal2tiles approach |
+| ISGS-specific download | `hillgen/sources/` plugin system | Source-agnostic |
 | `s3://ilhmp-dem-cache` | `s3://scriptedrelief-data/cache/` | Cleaner layout, same read-through strategy |
 
 ### What We Keep
@@ -442,10 +442,10 @@ Scripted Relief inherits and generalizes ilhmp's battle-tested components:
 
 ### What We Fix
 
-- **TMS/XYZ coordinate confusion** — ilhmp had bugs with `scheme=tms` metadata vs XYZ coordinates. Scripted Relief standardizes on XYZ everywhere, with TMS only as an explicit packaging option.
+- **TMS/XYZ coordinate confusion** — ilhmp had bugs with `scheme=tms` metadata vs XYZ coordinates. Hillgen standardizes on XYZ everywhere, with TMS only as an explicit packaging option.
 - **State-locked DEM sources** — ISGS was the only source. Now pluggable with auto-selection.
 - **`--place` geocoding** — no more needing to look up bounding boxes manually.
-- **Intermediate cleanup** — ilhmp left multi-GB intermediates on disk by default. Scripted Relief cleans up unless `--keep-intermediates`.
+- **Intermediate cleanup** — ilhmp left multi-GB intermediates on disk by default. Hillgen cleans up unless `--keep-intermediates`.
 - **numpy 2.x compatibility** — proper dependency pinning avoids numpy 1.x/2.x ABI conflicts with system GDAL.
 
 ---
@@ -466,7 +466,7 @@ hillshade-generator/
 │   ├── app.js
 │   ├── status.html
 │   └── assets/
-├── scripted_relief/             # Python package
+├── hillgen/             # Python package
 │   ├── __init__.py
 │   ├── cli.py                   # Click CLI entry point
 │   ├── pipeline/
@@ -518,6 +518,6 @@ hillshade-generator/
 1. **Themes are the UX.** Users think in themes, not GDAL flags. Every visual decision lives in a theme.
 2. **Cache everything expensive.** DEMs take hours to download. Grayscale hillshades take minutes. Never recompute what you can cache.
 3. **PMTiles first.** Serverless delivery is the default. MBTiles exists for offline/ATAK compatibility.
-4. **One command, zero config.** `scripted-relief run --place "Mt. Hood" --theme midnight` should just work — downloading the DEM, picking the right resolution, and outputting PMTiles.
+4. **One command, zero config.** `hillgen run --place "Mt. Hood" --theme midnight` should just work — downloading the DEM, picking the right resolution, and outputting PMTiles.
 5. **Local-first.** Everything runs on your machine. Cloud generation is a future add-on, not a requirement.
 6. **Portable themes.** A theme JSON + ramp file is everything someone needs to reproduce a style. Share them, submit them, fork them.

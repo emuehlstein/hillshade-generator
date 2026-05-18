@@ -9,7 +9,7 @@ There are two submission paths with different trust levels:
 | What | Risk | Review | Mechanism |
 |------|------|--------|-----------|
 | **Intermediates** (DEMs, reprojected rasters, grayscale hillshades) | Low — deterministic, verifiable | Automated | `--contribute` flag → presigned upload → validation Lambda |
-| **PMTiles** (finished styled tiles for scriptedrelief.com) | Higher — public-facing, curated | Manual (PR) | `scripted-relief publish` → GitHub PR → maintainer review |
+| **PMTiles** (finished styled tiles for scriptedrelief.com) | Higher — public-facing, curated | Manual (PR) | `hillgen publish` → GitHub PR → maintainer review |
 
 ---
 
@@ -26,7 +26,7 @@ Intermediates are safe to accept automatically because they're:
 
 ```bash
 # Generate locally AND contribute intermediates to the public cache
-scripted-relief run --place "Denali" --theme midnight --contribute
+hillgen run --place "Denali" --theme midnight --contribute
 ```
 
 The `--contribute` flag tells the CLI to upload intermediates to the shared cache after each pipeline stage. Generation works identically with or without the flag — it only controls whether results are shared back.
@@ -135,10 +135,10 @@ Published tiles appear on scriptedrelief.com under the project's name. Quality m
 
 ```bash
 # Generate a hillshade
-scripted-relief run --place "Crater Lake" --theme alpine-glacier
+hillgen run --place "Crater Lake" --theme alpine-glacier
 
 # Publish to the community library
-scripted-relief publish ./output/crater-lake-alpine-glacier-3x.pmtiles
+hillgen publish ./output/crater-lake-alpine-glacier-3x.pmtiles
 ```
 
 ### What `publish` does
@@ -233,7 +233,7 @@ A GitHub Actions workflow triggers on merge of `catalog/pending/*.json`:
 - [ ] `dem_source` present (e.g. "USGS 3DEP 1/3 arc-second")
 - [ ] `attribution` present
 - [ ] `generated_at` present and valid ISO-8601
-- [ ] `generator` = "scripted-relief" with version
+- [ ] `generator` = "hillgen" with version
 
 **Limits:**
 - [ ] File size < 10 GB
@@ -246,7 +246,7 @@ A GitHub Actions workflow triggers on merge of `catalog/pending/*.json`:
 When PR volume grows beyond what's comfortable to review on GitHub, we can add a web-based review dashboard:
 
 ```
-scripted-relief publish  →  staging upload  →  submission registered via API
+hillgen publish  →  staging upload  →  submission registered via API
                                                     │
                                               review dashboard
                                               (static page reading from

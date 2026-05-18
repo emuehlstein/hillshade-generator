@@ -1,12 +1,12 @@
-# Scripted Relief
+# Hillgen
 
 **Beautiful hillshade maps from real-world terrain data, generated with a single command.**
 
-Scripted Relief turns raw DEM (Digital Elevation Model) data into styled, publication-quality hillshade tiles. Run it locally on your Mac or Linux machine.
+Hillgen turns raw DEM (Digital Elevation Model) data into styled, publication-quality hillshade tiles. Run it locally on your Mac or Linux machine.
 
 ```bash
 # Generate a dark hillshade of Mt. Rainier
-scripted-relief run --bbox "-121.85,46.72,-121.65,46.92" \
+hillgen run --bbox "-121.85,46.72,-121.65,46.92" \
   --theme midnight --zoom 10-16 --output rainier.pmtiles
 ```
 
@@ -27,7 +27,7 @@ scripted-relief run --bbox "-121.85,46.72,-121.65,46.92" \
 
 ```bash
 # Requires Python 3.10+ and GDAL
-pip install scripted-relief
+pip install hillgen
 
 # Or from source
 git clone https://github.com/emuehlstein/hillshade-generator.git
@@ -45,34 +45,34 @@ pip install -e .
 
 ```bash
 # By bounding box
-scripted-relief run --bbox "-105.35,39.6,-105.15,39.8" --theme midnight
+hillgen run --bbox "-105.35,39.6,-105.15,39.8" --theme midnight
 
 # By named place (geocodes automatically)
-scripted-relief run --place "Mt. St. Helens" --theme desert-sun --zoom 8-16
+hillgen run --place "Mt. St. Helens" --theme desert-sun --zoom 8-16
 
 # By county/state (US, uses Census boundaries)
-scripted-relief run --county cook --state IL --theme flat-terrain
+hillgen run --county cook --state IL --theme flat-terrain
 ```
 
 ### Browse Themes
 
 ```bash
-scripted-relief themes                     # list all themes
-scripted-relief themes --show midnight     # details + preview link
-scripted-relief themes --tag elevation     # filter by tag
+hillgen themes                     # list all themes
+hillgen themes --show midnight     # details + preview link
+hillgen themes --tag elevation     # filter by tag
 ```
 
 ### Preview Locally
 
 ```bash
-scripted-relief view ./output/ --port 9999   # opens a local MapLibre viewer
+hillgen view ./output/ --port 9999   # opens a local MapLibre viewer
 ```
 
 ---
 
 ## Themes
 
-Themes are the heart of Scripted Relief. Each theme bundles shading mode, color ramp, exaggeration strategy, and blending parameters into a single named preset.
+Themes are the heart of Hillgen. Each theme bundles shading mode, color ramp, exaggeration strategy, and blending parameters into a single named preset.
 
 ### Built-in Themes
 
@@ -110,7 +110,7 @@ Create a JSON file:
 ```
 
 ```bash
-scripted-relief run --place "Grand Canyon" --theme ./my-custom-theme.json
+hillgen run --place "Grand Canyon" --theme ./my-custom-theme.json
 ```
 
 ### Color Ramps
@@ -133,7 +133,7 @@ We welcome community themes! See [CONTRIBUTING.md](CONTRIBUTING.md) for the subm
 
 ## DEM Sources
 
-Scripted Relief auto-selects the best available DEM source for your area, or you can specify one explicitly.
+Hillgen auto-selects the best available DEM source for your area, or you can specify one explicitly.
 
 | Source | Resolution | Coverage | Auto-Download |
 |--------|-----------|----------|---------------|
@@ -146,13 +146,13 @@ Scripted Relief auto-selects the best available DEM source for your area, or you
 
 ```bash
 # Auto-select (picks best available resolution)
-scripted-relief run --place "Denali" --theme alpine-glacier
+hillgen run --place "Denali" --theme alpine-glacier
 
 # Force a specific source
-scripted-relief run --bbox "..." --dem usgs-3dep-1m --theme midnight
+hillgen run --bbox "..." --dem usgs-3dep-1m --theme midnight
 
 # Use a local DEM file
-scripted-relief run --dem ./my-dem.tif --theme simmon
+hillgen run --dem ./my-dem.tif --theme simmon
 ```
 
 ### Adding DEM Sources
@@ -172,19 +172,19 @@ DEM sources are defined as catalog entries. New sources can be added by implemen
 
 ```bash
 # PMTiles only (default)
-scripted-relief run --place "Yosemite" --theme simmon
+hillgen run --place "Yosemite" --theme simmon
 
 # MBTiles for ATAK
-scripted-relief run --place "Yosemite" --theme tactical --format mbtiles
+hillgen run --place "Yosemite" --theme tactical --format mbtiles
 
 # Both
-scripted-relief run --place "Yosemite" --theme simmon --format pmtiles,mbtiles
+hillgen run --place "Yosemite" --theme simmon --format pmtiles,mbtiles
 
 # Keep intermediates locally (reprojected DEM, grayscale hillshade, styled raster)
-scripted-relief run --place "Yosemite" --theme simmon --keep-intermediates
+hillgen run --place "Yosemite" --theme simmon --keep-intermediates
 
 # Skip the public cache (fully offline)
-scripted-relief run --place "Yosemite" --theme simmon --no-cache
+hillgen run --place "Yosemite" --theme simmon --no-cache
 ```
 
 ---
@@ -193,22 +193,22 @@ scripted-relief run --place "Yosemite" --theme simmon --no-cache
 
 ### Public Intermediate Cache
 
-Scripted Relief ships with a built-in public cache at `s3://scriptedrelief-data/`. Every run automatically checks the cache before downloading or processing — **no config, no auth, no AWS account needed.**
+Hillgen ships with a built-in public cache at `s3://scriptedrelief-data/`. Every run automatically checks the cache before downloading or processing — **no config, no auth, no AWS account needed.**
 
-The source DEMs are all public domain (USGS, Copernicus, SRTM), so the derived intermediates are too. The more people use Scripted Relief, the fuller the cache gets, and the faster it is for everyone.
+The source DEMs are all public domain (USGS, Copernicus, SRTM), so the derived intermediates are too. The more people use Hillgen, the fuller the cache gets, and the faster it is for everyone.
 
 ```bash
 # This just works — pulls cached intermediates automatically
-scripted-relief run --place "Crater Lake" --theme midnight
+hillgen run --place "Crater Lake" --theme midnight
 
 # Second run with a different theme reuses the cached DEM and reprojection
-scripted-relief run --place "Crater Lake" --theme alpine-glacier
+hillgen run --place "Crater Lake" --theme alpine-glacier
 
 # Fully offline (skip cache reads)
-scripted-relief run --place "Crater Lake" --theme midnight --no-cache
+hillgen run --place "Crater Lake" --theme midnight --no-cache
 
 # Point at your own private S3 bucket instead
-scripted-relief run --place "Crater Lake" --theme midnight --s3-cache s3://my-bucket/
+hillgen run --place "Crater Lake" --theme midnight --s3-cache s3://my-bucket/
 ```
 
 The cache is read-through with deterministic keys — same area + source + parameters = same cache key. If anyone has ever generated Crater Lake at 3x exaggeration, you skip the DEM download and reprojection entirely and start from the cached grayscale hillshade.
@@ -219,7 +219,7 @@ Help the community by sharing your cached intermediates back:
 
 ```bash
 # Generate AND upload your intermediates to the public cache
-scripted-relief run --place "Denali" --theme midnight --contribute
+hillgen run --place "Denali" --theme midnight --contribute
 ```
 
 No AWS credentials needed — uploads use short-lived presigned URLs. An automated validation pipeline checks format, bounds, and data integrity before promoting files to the public cache. See [docs/submission.md](docs/submission.md) for details.
@@ -229,7 +229,7 @@ No AWS credentials needed — uploads use short-lived presigned URLs. An automat
 Push your locally-generated hillshade to the public library:
 
 ```bash
-scripted-relief publish ./output/crater-lake-alpine-glacier.pmtiles
+hillgen publish ./output/crater-lake-alpine-glacier.pmtiles
 ```
 
 The CLI validates your file locally, uploads it to staging, and opens a GitHub PR for review. Once merged, tiles go live on scriptedrelief.com automatically. See [docs/submission.md](docs/submission.md) for the full submission and validation process.
@@ -259,7 +259,7 @@ See [docs/submission.md](docs/submission.md) for how community contributions (in
 
 ## Project Lineage
 
-Scripted Relief is the successor to [ilhmp](https://github.com/emuehlstein/illinois-hillshade-gen) (Illinois Height Modernization Project), which started as an Illinois-specific hillshade generator for ATAK offline map packages. The lessons learned from generating 23GB of tiles across 15+ regions informed this broader, source-agnostic platform.
+Hillgen is the successor to [ilhmp](https://github.com/emuehlstein/illinois-hillshade-gen) (Illinois Height Modernization Project), which started as an Illinois-specific hillshade generator for ATAK offline map packages. The lessons learned from generating 23GB of tiles across 15+ regions informed this broader, source-agnostic platform.
 
 Key improvements over ilhmp:
 - **Global DEM support** — not locked to Illinois/ISGS
