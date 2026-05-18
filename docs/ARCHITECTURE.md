@@ -316,7 +316,7 @@ hillgen
 ├── run          Generate hillshade tiles
 ├── themes       List/show/validate themes
 ├── sources      List available DEM sources
-├── view         Local MapLibre tile viewer
+├── view         Local Leaflet tile viewer
 ├── publish      Upload to community library
 ├── cache        Manage local cache
 │   ├── status   Show cache size and contents
@@ -391,7 +391,7 @@ publish         ─────────────────────�
 
 ### Stack
 
-- **MapLibre GL JS** — vector/raster map renderer
+- **Leaflet** — lightweight raster tile viewer
 - **pmtiles.js** — PMTiles protocol for direct S3 range requests
 - **CloudFront** — CDN + HTTPS
 - Entirely static — no backend server
@@ -515,7 +515,7 @@ hillshade-generator/
 │   │   ├── local.py             # local filesystem cache
 │   │   └── s3.py                # S3 read-through cache
 │   ├── publish.py               # upload to community library
-│   ├── viewer.py                # local MapLibre preview server
+│   ├── viewer.py                # local Leaflet preview server
 │   └── catalog.py               # catalog.json management
 └── tests/
     ├── test_pipeline.py

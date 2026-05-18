@@ -65,7 +65,7 @@ hillgen themes --tag elevation     # filter by tag
 ### Preview Locally
 
 ```bash
-hillgen view ./output/ --port 9999   # opens a local MapLibre viewer
+hillgen view ./output/ --port 9999   # opens a local Leaflet viewer
 ```
 
 ---
