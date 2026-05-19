@@ -405,43 +405,72 @@ function initMap() {
   });
   select.onchange = () => loadThemeOnMap(select.value);
 
-  // Load first layer if available
-  if (catalog.layers && catalog.layers.length > 0) {
-    loadPMTilesLayer(catalog.layers[0]);
-    select.value = catalog.layers[0].theme;
-  }
+  // Load alpine-glacier by default (hero theme)
+  select.value = 'alpine-glacier';
+  loadThemeOnMap('alpine-glacier');
 }
 
-function loadPMTilesLayer(layer) {
-  if (currentLayer) map.removeLayer(currentLayer);
+const TILES_S3 = 'https://scriptedrelief.s3.us-east-2.amazonaws.com/tiles';
+const ST_HELENS_LEAFLET = [[46.15, -122.25], [46.25, -122.10]];
 
-  // PMTiles via direct S3 URL
-  const url = layer.pmtiles.startsWith('http') ? layer.pmtiles : PMTILES_BASE + layer.pmtiles;
-
-  // For now, use the raster tile URL pattern from mbtileserver or direct XYZ
-  // PMTiles protocol requires the pmtiles JS adapter with Leaflet
-  // Fallback: just show the preview as an image overlay
-  if (layer.bounds) {
-    const bounds = [[layer.bounds[1], layer.bounds[0]], [layer.bounds[3], layer.bounds[2]]];
-    const preview = `previews/${layer.theme}.png`;
-    currentLayer = L.imageOverlay(preview, bounds, { opacity: 0.9 }).addTo(map);
-    map.fitBounds(bounds);
-  }
+function pmtilesUrl(theme) {
+  return `${TILES_S3}/3dep_n46.20_w122.17_4326_${theme}_3.0x.pmtiles`;
 }
+
+const PUBLISHED_THEMES = ['midnight','daylight','alpine-glacier','magma','vivid','desert-sun','aurora','infrared','cool','tactical','simmon'];
+
+// PMTiles tile cache
+const pmtilesCache = {};
+function getPMTiles(theme) {
+  if (!pmtilesCache[theme]) {
+    pmtilesCache[theme] = new pmtiles.PMTiles(pmtilesUrl(theme));
+  }
+  return pmtilesCache[theme];
+}
+
+// Custom Leaflet TileLayer that reads from PMTiles
+const PMTilesLayer = L.GridLayer.extend({
+  initialize: function(pmtilesInstance, options) {
+    this._pmtiles = pmtilesInstance;
+    L.GridLayer.prototype.initialize.call(this, options);
+  },
+  createTile: function(coords, done) {
+    const tile = document.createElement('img');
+    tile.setAttribute('role', 'presentation');
+    const size = this.getTileSize();
+    tile.width = size.x;
+    tile.height = size.y;
+
+    this._pmtiles.getZxy(coords.z, coords.x, coords.y).then(result => {
+      if (result && result.data) {
+        const blob = new Blob([result.data], { type: 'image/png' });
+        tile.src = URL.createObjectURL(blob);
+        tile.onload = () => { URL.revokeObjectURL(tile.src); done(null, tile); };
+        tile.onerror = () => done(new Error('tile decode error'), tile);
+      } else {
+        // No tile at this coord — transparent
+        tile.src = 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7';
+        done(null, tile);
+      }
+    }).catch(() => {
+      tile.src = 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7';
+      done(null, tile);
+    });
+    return tile;
+  }
+});
 
 function loadThemeOnMap(themeName) {
-  // Check if we have a published layer for this theme
-  const layer = (catalog.layers || []).find(l => l.theme === themeName);
-  if (layer) {
-    loadPMTilesLayer(layer);
-    return;
-  }
-  // Otherwise show preview as image overlay on St Helens bbox
   if (currentLayer) map.removeLayer(currentLayer);
-  const bounds = [[46.15, -122.25], [46.25, -122.10]];
-  const preview = `previews/${themeName}.png`;
-  currentLayer = L.imageOverlay(preview, bounds, { opacity: 0.9 }).addTo(map);
-  map.fitBounds(bounds);
+
+  if (PUBLISHED_THEMES.includes(themeName)) {
+    const p = getPMTiles(themeName);
+    currentLayer = new PMTilesLayer(p, { maxZoom: 20, opacity: 1.0 }).addTo(map);
+  } else {
+    const preview = `previews/${themeName}.png`;
+    currentLayer = L.imageOverlay(preview, ST_HELENS_LEAFLET, { opacity: 0.9 }).addTo(map);
+  }
+  map.fitBounds(ST_HELENS_LEAFLET);
 }
 
 function scrollToMap(themeName) {
