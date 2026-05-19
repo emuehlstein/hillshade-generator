@@ -660,10 +660,58 @@ def view(path, port):
 
 @cli.command()
 @click.argument("path", type=click.Path(exists=True))
-def publish(path):
+@click.option("--dry-run", is_flag=True, help="Validate only, don't upload")
+def publish(path, dry_run):
     """Publish a PMTiles file to the community library."""
-    click.echo("Not yet implemented — see ROADMAP.md M9")
-    raise SystemExit(1)
+    import struct
+
+    p = Path(path)
+    if not p.suffix == ".pmtiles":
+        click.echo(f"Expected .pmtiles file, got: {p.suffix}")
+        raise SystemExit(1)
+
+    # Validate PMTiles v3 header
+    with open(p, "rb") as f:
+        header = f.read(127)
+
+    if len(header) < 127:
+        click.echo("Error: file too small to be valid PMTiles")
+        raise SystemExit(1)
+
+    magic = header[0:7]
+    if magic != b"PMTiles":
+        click.echo(f"Error: invalid PMTiles magic bytes: {magic}")
+        raise SystemExit(1)
+
+    version = header[7]
+    if version != 3:
+        click.echo(f"Error: expected PMTiles v3, got v{version}")
+        raise SystemExit(1)
+
+    size_mb = p.stat().st_size / (1024 * 1024)
+    click.echo(f"Valid PMTiles v3: {p.name} ({size_mb:.1f} MB)")
+
+    if dry_run:
+        click.echo("Dry run — validation passed, not uploading.")
+        return
+
+    # Upload to S3
+    try:
+        import boto3
+    except ImportError:
+        click.echo("Error: boto3 required for publish. pip install boto3")
+        raise SystemExit(1)
+
+    bucket = "scriptedrelief"
+    key = f"tiles/{p.name}"
+
+    click.echo(f"Uploading to s3://{bucket}/{key}...")
+    s3 = boto3.client("s3")
+    s3.upload_file(str(p), bucket, key, ExtraArgs={"ContentType": "application/x-protobuf"})
+    click.echo(f"Published: https://scriptedrelief.com/{key}")
+
+    # TODO: update catalog.json, invalidate CloudFront
+    click.echo("Note: catalog.json update not yet implemented.")
 
 
 @cli.group()

@@ -77,17 +77,21 @@ Development plan for hillgen MVP. Each milestone produces something testable aga
 - **Thresholds:** flat(<50m)→9x, rolling(<200m)→4x, hilly(<1000m)→2x, mountain→1.5x
 
 ### M8: S3 Cache
-- [ ] Read-through from `s3://scriptedrelief-data/cache/`
-- [ ] Public-read anonymous HTTPS fetches (no creds for reads)
-- [ ] Write with `--contribute` (needs AWS creds)
-- [ ] Duplicate key check before upload
-- **Test:** upload intermediate, clear local cache, re-run pulls from S3
+- [x] `cache_s3.py` module: try_pull (anonymous HTTPS), push (boto3), exists
+- [x] Public-read URL construction for `scriptedrelief-data` bucket
+- [x] Designed to integrate at each pipeline stage (gated behind bucket existence)
+- [ ] Wire into pipeline stages (pending bucket creation)
+- [ ] `--contribute` flag triggers uploads after each stage
+- **Status:** Module ready, will activate when S3 bucket is created
 
 ### M9: Publish
-- [ ] `hillgen publish` — validate PMTiles + upload to `s3://scriptedrelief/tiles/`
-- [ ] Update `catalog.json`
+- [x] `hillgen publish` — validates PMTiles v3 header (magic bytes, version)
+- [x] `--dry-run` flag for validation without upload
+- [x] Upload via boto3 to `s3://scriptedrelief/tiles/`
+- [ ] Update `catalog.json` after upload
 - [ ] CloudFront invalidation
-- **Test:** published tile viewable on scriptedrelief.com
+- **Test:** dry-run validation passes on generated PMTiles ✅
+- **Status:** Validation + upload ready, catalog/CloudFront pending
 
 ## Status
 
@@ -101,8 +105,8 @@ Development plan for hillgen MVP. Each milestone produces something testable aga
 | M5 | ✅ | 2026-05-18 | 2026-05-18 | cache clean (dry-run, per-stage), cache pull |
 | M6 | ✅ | 2026-05-18 | 2026-05-18 | Nominatim geocoding, --place works everywhere |
 | M7 | ✅ | 2026-05-18 | 2026-05-18 | Auto-exag: flat→9x, rolling→4x, mountain→1.5x |
-| M8 | | | | |
-| M9 | | | | |
+| M8 | 🟡 | 2026-05-18 | | S3 module ready, pending bucket creation |
+| M9 | 🟡 | 2026-05-18 | | Validate + upload ready, catalog pending |
 
 ## Decisions Log
 
