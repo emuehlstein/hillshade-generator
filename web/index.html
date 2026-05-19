@@ -48,7 +48,7 @@ a:hover { color: var(--accent-hover); }
 .hero-bg {
   position: absolute;
   inset: 0;
-  background: url('previews/alpine-glacier.png') center/cover;
+  background: url('previews/mauna-kea/alpine-glacier.png') center/cover;
   filter: brightness(0.4);
   z-index: 0;
 }
@@ -214,6 +214,17 @@ section .subtitle {
   font-family: monospace;
   font-size: 0.85rem;
 }
+#geo-select {
+  padding: 8px 16px;
+  border-radius: 6px;
+  background: var(--accent);
+  color: #fff;
+  border: none;
+  font-size: 0.9rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+#geo-select:hover { background: var(--accent-hover); }
 
 /* CTA section */
 .cta-section {
@@ -283,7 +294,14 @@ footer a:hover { color: var(--accent); }
 <!-- Theme Gallery -->
 <section id="themes">
   <h2>Themes</h2>
-  <p class="subtitle">Every theme applied to Mt. St. Helens. Click to preview on the map.</p>
+  <div style="display:flex; align-items:center; gap:16px; margin-bottom:12px; flex-wrap:wrap">
+    <p class="subtitle" style="margin-bottom:0">Every theme applied to</p>
+    <select id="geo-select" onchange="switchGeography(this.value)">
+      <option value="mauna-kea">Mauna Kea, Hawaii</option>
+      <option value="mt-rainier">Mt. Rainier, WA</option>
+      <option value="st-helens">Mt. St. Helens, WA</option>
+    </select>
+  </div>
   <div class="theme-grid" id="theme-grid"></div>
 </section>
 
@@ -332,8 +350,37 @@ footer a:hover { color: var(--accent); }
 
 <script>
 // Load catalog and build the page
-const PMTILES_BASE = '';  // relative to site root
+const PMTILES_BASE = '';
 const PREVIEW_THEMES = ['alpine-glacier','midnight','daylight','magma','vivid','desert-sun','aurora','infrared','cool','tactical','simmon','vivid-elevation','cool-elevation','volcanic-ash','forest-canopy','ocean-depth','toxic','sunset-ridge','topo-classic','grayscale','flat-terrain'];
+
+const GEOGRAPHIES = {
+  'mauna-kea': {
+    name: 'Mauna Kea, Hawaii',
+    center: [19.82, -155.47],
+    bounds: [[19.67, -155.62], [19.97, -155.32]],
+    previewDir: 'previews/mauna-kea',
+    pmtilesPrefix: 'tiles/mauna-kea/3dep_n19.82_w155.47_4326',
+    heroPreview: 'previews/mauna-kea/alpine-glacier.png',
+  },
+  'mt-rainier': {
+    name: 'Mt. Rainier, WA',
+    center: [46.85, -121.76],
+    bounds: [[46.70, -121.91], [47.00, -121.61]],
+    previewDir: 'previews/mt-rainier',
+    pmtilesPrefix: 'tiles/mt-rainier/3dep_n46.85_w121.76_4326',
+    heroPreview: 'previews/mt-rainier/alpine-glacier.png',
+  },
+  'st-helens': {
+    name: 'Mt. St. Helens, WA',
+    center: [46.2, -122.175],
+    bounds: [[46.15, -122.25], [46.25, -122.10]],
+    previewDir: 'previews',
+    pmtilesPrefix: 'tiles/3dep_n46.20_w122.17_4326',
+    heroPreview: 'previews/alpine-glacier.png',
+  },
+};
+
+let currentGeo = 'mauna-kea';
 
 let catalog = null;
 let map = null;
@@ -367,7 +414,7 @@ function buildThemeGrid() {
     card.onclick = () => scrollToMap(theme.name);
 
     const imgHtml = hasPreview
-      ? `<img src="previews/${theme.name}.png" alt="${theme.name} hillshade" loading="lazy">`
+      ? `<img src="${previewUrl(theme.name)}" alt="${theme.name} hillshade" loading="lazy">`
       : `<div class="placeholder" style="background:${theme.color || '#222'}">◆</div>`;
 
     card.innerHTML = `
@@ -410,11 +457,33 @@ function initMap() {
   loadThemeOnMap('alpine-glacier');
 }
 
-const TILES_S3 = 'https://scriptedrelief.s3.us-east-2.amazonaws.com/tiles';
-const ST_HELENS_LEAFLET = [[46.15, -122.25], [46.25, -122.10]];
+function switchGeography(geoKey) {
+  currentGeo = geoKey;
+  const geo = GEOGRAPHIES[geoKey];
+
+  // Update hero background
+  document.querySelector('.hero-bg').style.backgroundImage = `url('${geo.heroPreview}')`;
+
+  // Rebuild theme grid with new previews
+  document.getElementById('theme-grid').innerHTML = '';
+  buildThemeGrid();
+
+  // Reload map
+  const select = document.getElementById('theme-select');
+  loadThemeOnMap(select.value || 'alpine-glacier');
+  map.fitBounds(geo.bounds);
+}
+
+const S3_BASE = 'https://scriptedrelief.s3.us-east-2.amazonaws.com';
 
 function pmtilesUrl(theme) {
-  return `${TILES_S3}/3dep_n46.20_w122.17_4326_${theme}_3.0x.pmtiles`;
+  const geo = GEOGRAPHIES[currentGeo];
+  return `${S3_BASE}/${geo.pmtilesPrefix}_${theme}_3.0x.pmtiles`;
+}
+
+function previewUrl(theme) {
+  const geo = GEOGRAPHIES[currentGeo];
+  return `${geo.previewDir}/${theme}.png`;
 }
 
 const PUBLISHED_THEMES = ['midnight','daylight','alpine-glacier','magma','vivid','desert-sun','aurora','infrared','cool','tactical','simmon'];
@@ -462,15 +531,19 @@ const PMTilesLayer = L.GridLayer.extend({
 
 function loadThemeOnMap(themeName) {
   if (currentLayer) map.removeLayer(currentLayer);
+  const geo = GEOGRAPHIES[currentGeo];
 
   if (PUBLISHED_THEMES.includes(themeName)) {
-    const p = getPMTiles(themeName);
-    currentLayer = new PMTilesLayer(p, { maxZoom: 20, opacity: 1.0 }).addTo(map);
+    // Clear PMTiles cache when geo changes
+    const cacheKey = `${currentGeo}_${themeName}`;
+    if (!pmtilesCache[cacheKey]) {
+      pmtilesCache[cacheKey] = new pmtiles.PMTiles(pmtilesUrl(themeName));
+    }
+    currentLayer = new PMTilesLayer(pmtilesCache[cacheKey], { maxZoom: 20, opacity: 1.0 }).addTo(map);
   } else {
-    const preview = `previews/${themeName}.png`;
-    currentLayer = L.imageOverlay(preview, ST_HELENS_LEAFLET, { opacity: 0.9 }).addTo(map);
+    currentLayer = L.imageOverlay(previewUrl(themeName), geo.bounds, { opacity: 0.9 }).addTo(map);
   }
-  map.fitBounds(ST_HELENS_LEAFLET);
+  map.fitBounds(geo.bounds);
 }
 
 function scrollToMap(themeName) {

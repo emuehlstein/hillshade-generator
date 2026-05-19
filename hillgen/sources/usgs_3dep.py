@@ -100,9 +100,9 @@ class USGS3DEP10m:
         self._clip_to_bbox(merged, clipped, bbox)
 
         # Clean up merge temp if we created one
-        merge_tmp = output_dir / "_merged.tif"
-        if merge_tmp.exists() and merge_tmp != clipped:
-            merge_tmp.unlink()
+        for f in output_dir.glob("_merged_*.tif"):
+            if f != clipped:
+                f.unlink()
 
         if progress_cb:
             size_mb = clipped.stat().st_size / (1024 * 1024)
@@ -156,7 +156,9 @@ class USGS3DEP10m:
 
     def _merge_tiles(self, tiles: List[Path], output_dir: Path) -> Path:
         """Merge multiple GeoTIFF tiles into one."""
-        merged = output_dir / "_merged.tif"
+        import hashlib
+        key = hashlib.md5("|".join(str(t) for t in sorted(tiles)).encode()).hexdigest()[:8]
+        merged = output_dir / f"_merged_{key}.tif"
         cmd = [
             "gdal_merge.py", "-o", str(merged),
             "-co", "COMPRESS=DEFLATE",
