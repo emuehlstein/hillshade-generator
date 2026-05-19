@@ -2,7 +2,7 @@
 
 Development plan for hillgen MVP. Each milestone produces something testable against real terrain before moving on.
 
-**Test area:** Summerdale (~41.97, -87.68), 10km square — fast iteration, known-good ilhmp output to compare against.
+**Test area:** Mt. St. Helens (~46.19, -122.18), bbox `-122.25,46.15,-122.10,46.25` — dramatic terrain, known from prior iso renders.
 
 ## Milestones
 
@@ -13,7 +13,7 @@ Development plan for hillgen MVP. Each milestone produces something testable aga
 - **Test:** `pip install -e . && hillgen version`
 
 ### M1: Fetch
-- [ ] `hillgen fetch --bbox "-87.70,41.96,-87.66,41.99" --dem usgs-3dep-10m`
+- [ ] `hillgen fetch --bbox "-122.25,46.15,-122.10,46.25" --dem usgs-3dep-10m`
 - [ ] USGS 3DEP downloader (port from ilhmp `download.py`)
 - [ ] `DEMSource` base class + source registry
 - [ ] Writes to `~/.hillgen/cache/dem/`
