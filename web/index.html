@@ -330,6 +330,7 @@ footer a:hover { color: var(--accent); }
         <option value="st-helens" style="color:#000">Mt. St. Helens, WA</option>
         <option value="mt-rainier" style="color:#000">Mt. Rainier, WA</option>
         <option value="mauna-kea" style="color:#000">Mauna Kea, Hawaii</option>
+        <option value="indiana-dunes" style="color:#000">Indiana Dunes, IN</option>
       </select>
     </div>
     <div class="hero-buttons">
@@ -401,7 +402,7 @@ footer a:hover { color: var(--accent); }
 const PMTILES_BASE = '';
 const PREVIEW_THEMES = ['alpine-glacier','midnight','daylight','magma','vivid','desert-sun','aurora','infrared','cool','tactical','simmon','vivid-elevation','cool-elevation','volcanic-ash','forest-canopy','ocean-depth','toxic','sunset-ridge','topo-classic','grayscale','flat-terrain'];
 
-const GEO_ORDER = ['st-helens', 'mt-rainier', 'mauna-kea'];
+const GEO_ORDER = ['st-helens', 'mt-rainier', 'mauna-kea', 'indiana-dunes'];
 
 const GEOGRAPHIES = {
   'mauna-kea': {
@@ -413,6 +414,17 @@ const GEOGRAPHIES = {
     pmtilesPrefix: 'tiles/mauna-kea/3dep_n19.82_w155.47_4326',
     heroPreview: 'previews/mauna-kea/alpine-glacier.png',
     cardPreview: 'previews/mauna-kea/alpine-glacier.png',
+  },
+  'indiana-dunes': {
+    name: 'Indiana Dunes, IN',
+    location: 'Lake Michigan Shoreline, Indiana',
+    center: [41.66, -87.05],
+    bounds: [[41.60, -87.15], [41.72, -86.95]],
+    previewDir: 'previews/indiana-dunes',
+    pmtilesPrefix: 'tiles/indiana-dunes/3dep_n41.66_w87.05_4326',
+    heroPreview: 'previews/indiana-dunes/alpine-glacier.png',
+    cardPreview: 'previews/indiana-dunes/alpine-glacier.png',
+    exaggeration: '9.0',
   },
   'mt-rainier': {
     name: 'Mt. Rainier, WA',
@@ -570,7 +582,8 @@ const S3_BASE = 'https://scriptedrelief.s3.us-east-2.amazonaws.com';
 
 function pmtilesUrl(theme) {
   const geo = GEOGRAPHIES[currentGeo];
-  return `${S3_BASE}/${geo.pmtilesPrefix}_${theme}_3.0x.pmtiles`;
+  const exag = geo.exaggeration || '3.0';
+  return `${S3_BASE}/${geo.pmtilesPrefix}_${theme}_${exag}x.pmtiles`;
 }
 
 function previewUrl(theme) {
@@ -578,7 +591,13 @@ function previewUrl(theme) {
   return `${geo.previewDir}/${theme}.png`;
 }
 
-const PUBLISHED_THEMES = ['midnight','daylight','alpine-glacier','magma','vivid','desert-sun','aurora','infrared','cool','tactical','simmon'];
+const PUBLISHED_THEMES_BY_GEO = {
+  'st-helens':     ['midnight','daylight','alpine-glacier','magma','vivid','desert-sun','aurora','infrared','cool','tactical','simmon'],
+  'mt-rainier':    ['midnight','daylight','alpine-glacier','magma','vivid','desert-sun','aurora','infrared','cool','tactical','simmon'],
+  'mauna-kea':     ['midnight','daylight','alpine-glacier','magma','vivid','desert-sun','aurora','infrared','cool','tactical','simmon'],
+  'indiana-dunes': ['alpine-glacier','midnight','daylight','magma','vivid','desert-sun','aurora','infrared','cool','tactical','simmon','vivid-elevation','cool-elevation','volcanic-ash','forest-canopy','ocean-depth','toxic','sunset-ridge','topo-classic','grayscale','flat-terrain'],
+};
+function getPublishedThemes() { return PUBLISHED_THEMES_BY_GEO[currentGeo] || PUBLISHED_THEMES_BY_GEO['st-helens']; }
 
 // PMTiles tile cache
 const pmtilesCache = {};
@@ -625,7 +644,7 @@ function loadThemeOnMap(themeName) {
   if (currentLayer) map.removeLayer(currentLayer);
   const geo = GEOGRAPHIES[currentGeo];
 
-  if (PUBLISHED_THEMES.includes(themeName)) {
+  if (getPublishedThemes().includes(themeName)) {
     // Clear PMTiles cache when geo changes
     const cacheKey = `${currentGeo}_${themeName}`;
     if (!pmtilesCache[cacheKey]) {
