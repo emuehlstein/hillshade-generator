@@ -28,7 +28,7 @@ def compute_auto_exaggeration(dem_path: Path, target_contrast: float = 40.0) -> 
     """
     dem_path = Path(dem_path)
 
-    cmd = ["gdalinfo", "-stats", "-json", str(dem_path)]
+    cmd = ["gdalinfo", "-json", "-nomd", "-norat", "-noct", str(dem_path)]
     result = subprocess.run(cmd, capture_output=True, text=True, timeout=30)
 
     if result.returncode != 0:
