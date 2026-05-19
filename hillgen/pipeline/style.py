@@ -116,24 +116,32 @@ def _apply_elevation_style(
         raise RuntimeError(f"gdaldem color-relief (elevation) failed: {result.stderr}")
 
     if progress_cb:
-        progress_cb("  Modulating by hillshade...")
+        progress_cb("  Modulating by hillshade (chunked)...")
 
-    # Step 2: multiply RGB by hillshade for 3D effect
+    # Step 2: multiply RGB by hillshade for 3D effect — chunked to avoid OOM
+    CHUNK_ROWS = 512
+
     with rasterio.open(elev_colored) as elev_src:
-        elev_data = elev_src.read()  # (4, H, W) — RGBA
         profile = elev_src.profile.copy()
+        profile.update(tiled=True, blockxsize=512, blockysize=512, bigtiff="YES")
+        height, width = elev_src.height, elev_src.width
 
-    with rasterio.open(hillshade_path) as hs_src:
-        hs_data = hs_src.read(1).astype(np.float64) / 255.0  # normalize to 0-1
+        with rasterio.open(hillshade_path) as hs_src:
+            with rasterio.open(output_path, "w", **profile) as dst:
+                for row_off in range(0, height, CHUNK_ROWS):
+                    chunk_h = min(CHUNK_ROWS, height - row_off)
+                    window = rasterio.windows.Window(0, row_off, width, chunk_h)
 
-    # Modulate RGB channels, keep alpha
-    for band in range(3):  # R, G, B
-        elev_data[band] = np.clip(
-            elev_data[band].astype(np.float64) * hs_data, 0, 255
-        ).astype(np.uint8)
+                    elev_chunk = elev_src.read(window=window)  # (4, chunk_h, W)
+                    hs_chunk = hs_src.read(1, window=window).astype(np.float64) / 255.0
 
-    with rasterio.open(output_path, "w", **profile) as dst:
-        dst.write(elev_data)
+                    # Modulate RGB channels, keep alpha unchanged
+                    for band in range(3):  # R, G, B (1-indexed bands 1-3)
+                        elev_chunk[band] = np.clip(
+                            elev_chunk[band].astype(np.float64) * hs_chunk, 0, 255
+                        ).astype(np.uint8)
+
+                    dst.write(elev_chunk, window=window)
 
     # Clean up temp
     if elev_colored.exists():
