@@ -504,8 +504,84 @@ def package(bbox, place, dem, theme_name, exaggeration, zoom, output_format, out
 def run(bbox, place, theme, exaggeration, dem, zoom, output_format, output,
         keep_intermediates, contribute, no_cache, s3_cache, stop_after, start_from):
     """Full pipeline: fetch → reproject → shade → style → tile → package."""
-    click.echo("Not yet implemented — see ROADMAP.md M1-M4")
-    raise SystemExit(1)
+    resolved_bbox = _resolve_bbox(bbox, place)
+    cb = lambda msg: click.echo(msg)
+
+    # Stages in order
+    stages = ["fetch", "reproject", "shade", "style", "tile", "package"]
+    start_idx = stages.index(start_from) if start_from else 0
+    stop_idx = stages.index(stop_after) if stop_after else len(stages) - 1
+
+    # Stages 0-3 (fetch through style) are handled by _ensure_styled
+    if stop_idx >= 3:
+        styled_path = _ensure_styled(resolved_bbox, dem, theme, exaggeration)
+    elif stop_idx >= 0:
+        # Partial run — just run up to the requested stage
+        styled_path = _ensure_styled(resolved_bbox, dem, theme, exaggeration)
+        if stop_after in ("fetch", "reproject", "shade", "style"):
+            click.echo(f"\nStopped after: {stop_after}")
+            return
+
+    if stop_idx < 4:
+        click.echo(f"\nStopped after: {stop_after}")
+        return
+
+    # Stage 4: tile
+    from .pipeline.tiler import generate_tiles
+    from .cache import ensure_cache_dir
+
+    tiles_dir = ensure_cache_dir("tiles") / f"{styled_path.stem}_z{zoom}"
+    if not tiles_dir.exists() or not any(tiles_dir.rglob("*.png")):
+        generate_tiles(styled_path, tiles_dir, zoom=zoom, progress_cb=cb)
+    else:
+        count = sum(1 for _ in tiles_dir.rglob("*.png"))
+        click.echo(f"Tiles cached: {count:,} tiles")
+
+    if stop_idx < 5:
+        click.echo(f"\nStopped after: tile")
+        return
+
+    # Stage 5: package
+    from .pipeline.packager import package_mbtiles, package_pmtiles, metadata_from_raster
+    from .pipeline.tiler import parse_zoom
+    from .themes import get_theme as _get_theme
+
+    theme_obj = _get_theme(theme)
+    exag = exaggeration or (theme_obj.get_exaggeration_value() if theme_obj else None) or 3.0
+
+    out_dir = Path(output) if output else Path("./output")
+    out_dir.mkdir(parents=True, exist_ok=True)
+
+    base_name = styled_path.stem
+    meta = metadata_from_raster(styled_path)
+    min_z, max_z = parse_zoom(zoom)
+    formats = [f.strip() for f in output_format.split(",")]
+
+    mbtiles_path = None
+    if "mbtiles" in formats:
+        mbtiles_path = out_dir / f"{base_name}.mbtiles"
+        package_mbtiles(
+            tiles_dir, mbtiles_path,
+            name=base_name,
+            description=f"{theme} hillshade, {exag}x exaggeration",
+            bounds=meta["bounds"], center=f"{meta['center']},{min_z}",
+            min_zoom=min_z, max_zoom=max_z, progress_cb=cb,
+        )
+
+    if "pmtiles" in formats:
+        if mbtiles_path is None:
+            mbtiles_path = out_dir / f"{base_name}.mbtiles"
+            package_mbtiles(
+                tiles_dir, mbtiles_path, name=base_name,
+                bounds=meta["bounds"], center=f"{meta['center']},{min_z}",
+                min_zoom=min_z, max_zoom=max_z, progress_cb=cb,
+            )
+        pmtiles_path = out_dir / f"{base_name}.pmtiles"
+        package_pmtiles(mbtiles_path, pmtiles_path, progress_cb=cb)
+        if "mbtiles" not in formats and mbtiles_path.exists():
+            mbtiles_path.unlink()
+
+    click.echo(f"\nDone! Output: {out_dir}")
 
 
 @cli.command()
