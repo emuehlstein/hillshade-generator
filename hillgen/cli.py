@@ -145,21 +145,98 @@ def fetch(bbox, place, dem):
 @cli.command()
 @click.option("--bbox", type=str, help="Bounding box: west,south,east,north")
 @click.option("--place", type=str, help="Place name (geocoded via Nominatim)")
-def reproject(bbox, place):
+@click.option("--dem", type=str, default="auto", help="DEM source")
+def reproject(bbox, place, dem):
     """Reproject a cached DEM to EPSG:4326."""
-    click.echo("Not yet implemented — see ROADMAP.md M2")
-    raise SystemExit(1)
+    resolved_bbox = _resolve_bbox(bbox, place)
+
+    from .sources import resolve_source
+    from .cache import ensure_cache_dir
+    from .pipeline.reproject import reproject_to_4326, needs_reproject
+
+    source = resolve_source(resolved_bbox, dem)
+
+    # Find or fetch the DEM
+    dem_dir = ensure_cache_dir("dem") / source.name
+    dem_path = source.download(resolved_bbox, dem_dir, progress_cb=lambda msg: click.echo(msg))
+
+    # Check if already EPSG:4326
+    if not needs_reproject(dem_path):
+        click.echo(f"Already EPSG:4326: {dem_path}")
+        return
+
+    # Reproject
+    reproj_dir = ensure_cache_dir("reprojected")
+    output = reproj_dir / f"{dem_path.stem}_4326.tif"
+
+    if output.exists():
+        click.echo(f"Cached: {output}")
+        return
+
+    reproject_to_4326(dem_path, output, progress_cb=lambda msg: click.echo(msg))
+    click.echo(f"\nReprojected: {output}")
 
 
 @cli.command()
 @click.option("--bbox", type=str, help="Bounding box: west,south,east,north")
 @click.option("--place", type=str, help="Place name (geocoded via Nominatim)")
-@click.option("--exaggeration", type=str, default="auto", help="Vertical exaggeration (number or 'auto')")
+@click.option("--dem", type=str, default="auto", help="DEM source")
+@click.option("--exaggeration", type=float, default=3.0, help="Vertical exaggeration factor")
 @click.option("--shading", type=click.Choice(["standard", "multidirectional", "composite"]), default="composite")
-def shade(bbox, place, exaggeration, shading):
+def shade(bbox, place, dem, exaggeration, shading):
     """Generate grayscale hillshade from a reprojected DEM."""
-    click.echo("Not yet implemented — see ROADMAP.md M2")
-    raise SystemExit(1)
+    resolved_bbox = _resolve_bbox(bbox, place)
+
+    from .sources import resolve_source
+    from .cache import ensure_cache_dir
+    from .pipeline.reproject import reproject_to_4326, needs_reproject
+    from .pipeline.hillshade import generate_grayscale, generate_composite, ShadingMode
+
+    source = resolve_source(resolved_bbox, dem)
+    cb = lambda msg: click.echo(msg)
+
+    # Step 1: ensure DEM exists
+    dem_dir = ensure_cache_dir("dem") / source.name
+    dem_path = source.download(resolved_bbox, dem_dir, progress_cb=cb)
+
+    # Step 2: ensure reprojected to 4326
+    if needs_reproject(dem_path):
+        reproj_dir = ensure_cache_dir("reprojected")
+        reproj_path = reproj_dir / f"{dem_path.stem}_4326.tif"
+        if not reproj_path.exists():
+            reproject_to_4326(dem_path, reproj_path, progress_cb=cb)
+        else:
+            click.echo(f"Reproject cached: {reproj_path.name}")
+        input_dem = reproj_path
+    else:
+        input_dem = dem_path
+
+    # Step 3: generate hillshade
+    hs_dir = ensure_cache_dir("hillshade")
+
+    if shading == "composite":
+        output = hs_dir / f"{input_dem.stem}_gray_composite_0.6-0.3-0.1_{exaggeration}x.tif"
+        if output.exists():
+            click.echo(f"Cached: {output}")
+            return
+        generate_composite(
+            input_dem, output, exaggeration,
+            weights=(0.6, 0.3, 0.1),
+            cache_dir=hs_dir,
+            progress_cb=cb,
+        )
+    else:
+        mode = ShadingMode(shading if shading != "multidirectional" else "multi")
+        output = hs_dir / f"{input_dem.stem}_gray_{mode.value}_{exaggeration}x.tif"
+        if output.exists():
+            click.echo(f"Cached: {output}")
+            return
+        generate_grayscale(
+            input_dem, output, exaggeration,
+            mode=mode, progress_cb=cb,
+        )
+
+    click.echo(f"\nHillshade saved to: {output}")
 
 
 @cli.command()

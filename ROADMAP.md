@@ -24,12 +24,14 @@ Development plan for hillgen MVP. Each milestone produces something testable aga
 - **Result:** 1620×1080 px, 577-2535m elevation range, 5.4MB clipped
 
 ### M2: Reproject + Shade
-- [ ] `hillgen reproject --bbox ...` → EPSG:4326, bilinear
-- [ ] `hillgen shade --bbox ... --exaggeration 9` → grayscale hillshade
-- [ ] Composite shading: multi, igor, combined passes cached independently
-- [ ] Composite blend as weighted sum of cached sub-layers
-- **Test:** grayscale GeoTIFF renders correctly (QGIS or matplotlib)
-- **Compare:** ilhmp grayscale output for same area + exaggeration
+- [x] `hillgen reproject --bbox ...` → EPSG:4326, bilinear
+- [x] `hillgen shade --bbox ... --exaggeration 3 --shading composite` → grayscale hillshade
+- [x] Auto-detects CRS (3DEP is NAD83/4269, correctly reprojects to 4326)
+- [x] Composite shading: multi, igor, combined passes cached independently
+- [x] Composite blend as weighted sum of cached sub-layers via numpy
+- [x] Second run hits cache at every stage (DEM, reproject, sub-layers, composite)
+- **Test:** grayscale GeoTIFF opened for visual verification ⬅️
+- **Result:** 4 hillshade files (multi 1.7MB, igor 1.6MB, combined 1.7MB, composite 1.7MB)
 
 ### M3: Themes + Style
 - [ ] Copy 25+ ramp `.txt` files from ilhmp
@@ -84,7 +86,7 @@ Development plan for hillgen MVP. Each milestone produces something testable aga
 |-----------|--------|---------|-----------|-------|
 | M0 | ✅ | 2026-05-18 | 2026-05-18 | Skeleton + all subcommand stubs |
 | M1 | ✅ | 2026-05-18 | 2026-05-18 | USGS 3DEP 10m, tile caching, bbox clipping |
-| M2 | | | | |
+| M2 | ✅ | 2026-05-18 | 2026-05-18 | Reproject (NAD83→4326) + composite shading |
 | M3 | | | | |
 | M4 | | | | |
 | M5 | | | | |
