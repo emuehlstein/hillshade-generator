@@ -56,21 +56,25 @@ Development plan for hillgen MVP. Each milestone produces something testable aga
 **— `hillgen run --bbox ... --theme midnight` works end to end —**
 
 ### M5: Local Cache
-- [ ] Cache lookups at each stage, skip on hit
-- [ ] `hillgen cache status` — show what's cached and sizes
-- [ ] `hillgen cache clean` — remove stale intermediates
-- **Test:** second run with different theme skips fetch/reproject/shade
+- [x] Cache lookups at each stage, skip on hit (done in M1-M4)
+- [x] `hillgen cache status` — show what's cached and sizes
+- [x] `hillgen cache clean` — remove stale intermediates (dry-run, per-stage)
+- [x] `hillgen cache pull` — pre-fetch DEM for an area
+- **Test:** cache clean --dry-run --stage styled shows 3 files, 10.9 MB
 
 ### M6: Place Geocoding
-- [ ] `--place "Mt. St. Helens"` via Nominatim
-- [ ] `--county cook --state IL` via Census TIGER (stretch)
-- [ ] `--buffer 5km` for point features
-- **Test:** `--place "Crater Lake"` resolves to correct bbox
+- [x] `--place "Mt. St. Helens"` via Nominatim
+- [x] Auto-buffer for point features (~0.1° ≈ 11km)
+- [x] Area features use Nominatim's boundingbox directly
+- [ ] `--county cook --state IL` via Census TIGER (deferred)
+- [ ] `--buffer` flag for custom buffer size (deferred)
+- **Test:** `--place "Mt. St. Helens"` → bbox covering crater + surrounding terrain
 
 ### M7: Auto-Exaggeration
-- [ ] Port `auto_exag.py` from ilhmp
-- [ ] Wire into shade stage when theme has `exaggeration: "auto"`
-- **Test:** flat terrain (Summerdale) → 9x, mountains (Rainier) → ~2x
+- [x] Port auto-exag from ilhmp, improved terrain-type thresholds
+- [x] Wired into shade + _ensure_styled when exaggeration not specified
+- **Test:** St Helens (range 2100m) → 1.5x, simulated flat (range 30m) → 9x
+- **Thresholds:** flat(<50m)→9x, rolling(<200m)→4x, hilly(<1000m)→2x, mountain→1.5x
 
 ### M8: S3 Cache
 - [ ] Read-through from `s3://scriptedrelief-data/cache/`
@@ -94,9 +98,9 @@ Development plan for hillgen MVP. Each milestone produces something testable aga
 | M2 | ✅ | 2026-05-18 | 2026-05-18 | Reproject (NAD83→4326) + composite shading |
 | M3 | ✅ | 2026-05-18 | 2026-05-18 | 22 themes, ramp + elevation color modes |
 | M4 | ✅ | 2026-05-18 | 2026-05-18 | gdal2tiles XYZ, mbtiles+pmtiles, Leaflet viewer |
-| M5 | | | | |
-| M6 | | | | |
-| M7 | | | | |
+| M5 | ✅ | 2026-05-18 | 2026-05-18 | cache clean (dry-run, per-stage), cache pull |
+| M6 | ✅ | 2026-05-18 | 2026-05-18 | Nominatim geocoding, --place works everywhere |
+| M7 | ✅ | 2026-05-18 | 2026-05-18 | Auto-exag: flat→9x, rolling→4x, mountain→1.5x |
 | M8 | | | | |
 | M9 | | | | |
 

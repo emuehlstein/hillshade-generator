@@ -106,13 +106,22 @@ def _ensure_styled(resolved_bbox, dem, theme_name, exaggeration):
     if theme is None:
         raise click.BadParameter(f"Unknown theme: {theme_name}", param_hint="--theme")
 
-    exag = exaggeration or theme.get_exaggeration_value() or 3.0
     cb = lambda msg: click.echo(msg)
     source = resolve_source(resolved_bbox, dem)
 
     # DEM
     dem_dir = ensure_cache_dir("dem") / source.name
     dem_path = source.download(resolved_bbox, dem_dir, progress_cb=cb)
+
+    # Resolve exaggeration (auto if needed)
+    if exaggeration:
+        exag = exaggeration
+    elif theme.get_exaggeration_value():
+        exag = theme.get_exaggeration_value()
+    else:
+        from .pipeline.auto_exag import compute_auto_exaggeration
+        exag = compute_auto_exaggeration(dem_path)
+        click.echo(f"Auto-exaggeration: {exag}x")
 
     # Reproject
     if needs_reproject(dem_path):
@@ -172,8 +181,13 @@ def _resolve_bbox(bbox_str, place):
         except ValueError as e:
             raise click.BadParameter(str(e), param_hint="--bbox")
 
-    # Geocoding via --place is M6, stub for now
-    raise click.UsageError("--place not yet implemented (see ROADMAP.md M6). Use --bbox for now.")
+    from .geo.geocoder import geocode
+    try:
+        bbox = geocode(place)
+        click.echo(f"Geocoded '{place}' → {bbox}")
+        return bbox
+    except ValueError as e:
+        raise click.BadParameter(str(e), param_hint="--place")
 
 @cli.command()
 @click.option("--bbox", type=str, help="Bounding box: west,south,east,north")
@@ -249,7 +263,7 @@ def reproject(bbox, place, dem):
 @click.option("--bbox", type=str, help="Bounding box: west,south,east,north")
 @click.option("--place", type=str, help="Place name (geocoded via Nominatim)")
 @click.option("--dem", type=str, default="auto", help="DEM source")
-@click.option("--exaggeration", type=float, default=3.0, help="Vertical exaggeration factor")
+@click.option("--exaggeration", type=float, default=None, help="Vertical exaggeration factor (default: auto)")
 @click.option("--shading", type=click.Choice(["standard", "multidirectional", "composite"]), default="composite")
 def shade(bbox, place, dem, exaggeration, shading):
     """Generate grayscale hillshade from a reprojected DEM."""
@@ -278,6 +292,12 @@ def shade(bbox, place, dem, exaggeration, shading):
         input_dem = reproj_path
     else:
         input_dem = dem_path
+
+    # Auto-exaggeration if not specified
+    if exaggeration is None:
+        from .pipeline.auto_exag import compute_auto_exaggeration
+        exaggeration = compute_auto_exaggeration(input_dem)
+        click.echo(f"Auto-exaggeration: {exaggeration}x")
 
     # Step 3: generate hillshade
     hs_dir = ensure_cache_dir("hillshade")
@@ -680,10 +700,53 @@ def status():
 
 @cache.command()
 @click.option("--dry-run", is_flag=True, help="Show what would be deleted")
-def clean(dry_run):
+@click.option("--stage", type=click.Choice(["dem", "reprojected", "hillshade", "styled", "tiles", "all"]), default="all")
+def clean(dry_run, stage):
     """Remove cached intermediates."""
-    click.echo("Not yet implemented — see ROADMAP.md M5")
-    raise SystemExit(1)
+    from .cache import get_cache_dir
+    cache_dir = get_cache_dir()
+    if not cache_dir.exists():
+        click.echo("Cache is already empty.")
+        return
+
+    stages = ["dem", "reprojected", "hillshade", "styled", "tiles"] if stage == "all" else [stage]
+    total_size = 0
+    total_files = 0
+
+    for s in stages:
+        stage_dir = cache_dir / s
+        if not stage_dir.exists():
+            continue
+        files = [f for f in stage_dir.rglob("*") if f.is_file()]
+        size = sum(f.stat().st_size for f in files)
+        if files:
+            click.echo(f"  {s}: {len(files)} files, {_human_size(size)}")
+            total_size += size
+            total_files += len(files)
+            if not dry_run:
+                shutil.rmtree(stage_dir)
+
+    if total_files == 0:
+        click.echo("Nothing to clean.")
+    elif dry_run:
+        click.echo(f"\nWould delete {total_files} files ({_human_size(total_size)})")
+    else:
+        click.echo(f"\nDeleted {total_files} files ({_human_size(total_size)})")
+
+
+@cache.command(name="pull")
+@click.option("--bbox", type=str, help="Bounding box: west,south,east,north")
+@click.option("--place", type=str, help="Place name")
+@click.option("--dem", type=str, default="auto", help="DEM source")
+def cache_pull(bbox, place, dem):
+    """Pre-fetch DEM for an area (download only, no processing)."""
+    # This is just an alias for fetch
+    from .sources import resolve_source
+    from .cache import ensure_cache_dir
+    resolved_bbox = _resolve_bbox(bbox, place)
+    source = resolve_source(resolved_bbox, dem)
+    dem_dir = ensure_cache_dir("dem") / source.name
+    source.download(resolved_bbox, dem_dir, progress_cb=lambda msg: click.echo(msg))
 
 
 def _human_size(nbytes):
