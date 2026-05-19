@@ -1,0 +1,105 @@
+# Roadmap
+
+Development plan for hillgen MVP. Each milestone produces something testable against real terrain before moving on.
+
+**Test area:** Summerdale (~41.97, -87.68), 10km square — fast iteration, known-good ilhmp output to compare against.
+
+## Milestones
+
+### M0: Skeleton
+- [ ] `pyproject.toml` with dependencies, entry point, metadata
+- [ ] `hillgen/cli.py` — Click group with `version` subcommand
+- [ ] `hillgen version` prints version + GDAL info
+- **Test:** `pip install -e . && hillgen version`
+
+### M1: Fetch
+- [ ] `hillgen fetch --bbox "-87.70,41.96,-87.66,41.99" --dem usgs-3dep-10m`
+- [ ] USGS 3DEP downloader (port from ilhmp `download.py`)
+- [ ] `DEMSource` base class + source registry
+- [ ] Writes to `~/.hillgen/cache/dem/`
+- **Test:** valid GeoTIFF, `gdalinfo` shows correct bounds + CRS
+- **Compare:** same bbox fetched via ilhmp — files should be equivalent
+
+### M2: Reproject + Shade
+- [ ] `hillgen reproject --bbox ...` → EPSG:4326, bilinear
+- [ ] `hillgen shade --bbox ... --exaggeration 9` → grayscale hillshade
+- [ ] Composite shading: multi, igor, combined passes cached independently
+- [ ] Composite blend as weighted sum of cached sub-layers
+- **Test:** grayscale GeoTIFF renders correctly (QGIS or matplotlib)
+- **Compare:** ilhmp grayscale output for same area + exaggeration
+
+### M3: Themes + Style
+- [ ] Copy 25+ ramp `.txt` files from ilhmp
+- [ ] Port `Theme` dataclass + registry
+- [ ] `hillgen themes` — list all, `hillgen themes --show midnight`
+- [ ] `hillgen style --bbox ... --theme midnight --exaggeration 9`
+- **Test:** styled RGBA raster — visual compare against ilhmp output
+
+### M4: Tile + Package
+- [ ] `hillgen tile` — gdal2tiles, XYZ coordinates (not TMS)
+- [ ] `hillgen package` — tile dir → MBTiles + PMTiles
+- [ ] Metadata injection (bounds, center, attribution, scheme)
+- [ ] `hillgen view` — local Leaflet tile viewer
+- **Test:** `hillgen view` serves tiles, visually verify in browser
+- **Regression:** verify TMS/XYZ correctness (the DuPage bug)
+
+**— `hillgen run --bbox ... --theme midnight` works end to end —**
+
+### M5: Local Cache
+- [ ] Cache lookups at each stage, skip on hit
+- [ ] `hillgen cache status` — show what's cached and sizes
+- [ ] `hillgen cache clean` — remove stale intermediates
+- **Test:** second run with different theme skips fetch/reproject/shade
+
+### M6: Place Geocoding
+- [ ] `--place "Mt. St. Helens"` via Nominatim
+- [ ] `--county cook --state IL` via Census TIGER (stretch)
+- [ ] `--buffer 5km` for point features
+- **Test:** `--place "Crater Lake"` resolves to correct bbox
+
+### M7: Auto-Exaggeration
+- [ ] Port `auto_exag.py` from ilhmp
+- [ ] Wire into shade stage when theme has `exaggeration: "auto"`
+- **Test:** flat terrain (Summerdale) → 9x, mountains (Rainier) → ~2x
+
+### M8: S3 Cache
+- [ ] Read-through from `s3://scriptedrelief-data/cache/`
+- [ ] Public-read anonymous HTTPS fetches (no creds for reads)
+- [ ] Write with `--contribute` (needs AWS creds)
+- [ ] Duplicate key check before upload
+- **Test:** upload intermediate, clear local cache, re-run pulls from S3
+
+### M9: Publish
+- [ ] `hillgen publish` — validate PMTiles + upload to `s3://scriptedrelief/tiles/`
+- [ ] Update `catalog.json`
+- [ ] CloudFront invalidation
+- **Test:** published tile viewable on scriptedrelief.com
+
+## Status
+
+| Milestone | Status | Started | Completed | Notes |
+|-----------|--------|---------|-----------|-------|
+| M0 | 🔜 | | | |
+| M1 | | | | |
+| M2 | | | | |
+| M3 | | | | |
+| M4 | | | | |
+| M5 | | | | |
+| M6 | | | | |
+| M7 | | | | |
+| M8 | | | | |
+| M9 | | | | |
+
+## Decisions Log
+
+Record design decisions as they come up during development.
+
+| Date | Decision | Context |
+|------|----------|---------|
+| 2026-05-18 | CLI name: `hillgen` | Short, memorable |
+| 2026-05-18 | Leaflet over MapLibre GL JS | 3D terrain rendering was unreliable |
+| 2026-05-18 | Public S3 cache by default | Source DEMs are all public domain, lower barrier |
+| 2026-05-18 | Alpha: direct S3 writes | Presigned URL infra deferred to production phase |
+| 2026-05-18 | Cache composite sub-layers | Each gdaldem pass cached independently, blend is cheap |
+| 2026-05-18 | No cloud generation for v1 | Local-only, cloud pipeline is a future add-on |
+| 2026-05-18 | Pipeline subcommands | fetch/reproject/shade/style/tile/package each standalone |
