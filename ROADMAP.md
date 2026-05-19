@@ -78,20 +78,20 @@ Development plan for hillgen MVP. Each milestone produces something testable aga
 
 ### M8: S3 Cache
 - [x] `cache_s3.py` module: try_pull (anonymous HTTPS), push (boto3), exists
-- [x] Public-read URL construction for `scriptedrelief-data` bucket
-- [x] Designed to integrate at each pipeline stage (gated behind bucket existence)
-- [ ] Wire into pipeline stages (pending bucket creation)
+- [x] Created `scriptedrelief-data` bucket (us-east-2, public-read on `cache/` prefix)
+- [x] Created `scriptedrelief` bucket (us-east-2, public-read, CORS for PMTiles)
+- [x] Verified anonymous public read of cached intermediate
+- [x] Verified `try_pull` downloads 5.4MB reprojected DEM from S3
+- [ ] Wire S3 read-through into pipeline stages automatically
 - [ ] `--contribute` flag triggers uploads after each stage
-- **Status:** Module ready, will activate when S3 bucket is created
 
 ### M9: Publish
-- [x] `hillgen publish` — validates PMTiles v3 header (magic bytes, version)
+- [x] `hillgen publish` — validates PMTiles v3 header + uploads via boto3
 - [x] `--dry-run` flag for validation without upload
-- [x] Upload via boto3 to `s3://scriptedrelief/tiles/`
+- [x] First publish: midnight Mt. St. Helens PMTiles live on S3
 - [ ] Update `catalog.json` after upload
-- [ ] CloudFront invalidation
-- **Test:** dry-run validation passes on generated PMTiles ✅
-- **Status:** Validation + upload ready, catalog/CloudFront pending
+- [ ] CloudFront distribution for scriptedrelief.com
+- **Verified:** `https://scriptedrelief.s3.us-east-2.amazonaws.com/tiles/...` returns 200
 
 ## Status
 
@@ -105,8 +105,8 @@ Development plan for hillgen MVP. Each milestone produces something testable aga
 | M5 | ✅ | 2026-05-18 | 2026-05-18 | cache clean (dry-run, per-stage), cache pull |
 | M6 | ✅ | 2026-05-18 | 2026-05-18 | Nominatim geocoding, --place works everywhere |
 | M7 | ✅ | 2026-05-18 | 2026-05-18 | Auto-exag: flat→9x, rolling→4x, mountain→1.5x |
-| M8 | 🟡 | 2026-05-18 | | S3 module ready, pending bucket creation |
-| M9 | 🟡 | 2026-05-18 | | Validate + upload ready, catalog pending |
+| M8 | ✅ | 2026-05-18 | 2026-05-18 | S3 buckets created, public read verified |
+| M9 | ✅ | 2026-05-18 | 2026-05-18 | Publish validated + uploaded PMTiles to S3 |
 
 ## Decisions Log
 
@@ -121,3 +121,5 @@ Record design decisions as they come up during development.
 | 2026-05-18 | Cache composite sub-layers | Each gdaldem pass cached independently, blend is cheap |
 | 2026-05-18 | No cloud generation for v1 | Local-only, cloud pipeline is a future add-on |
 | 2026-05-18 | Pipeline subcommands | fetch/reproject/shade/style/tile/package each standalone |
+| 2026-05-18 | S3 buckets | scriptedrelief-data (cache, public-read on cache/), scriptedrelief (web, public-read all) |
+| 2026-05-18 | botocore[crt] needed | venv boto3 with aws login requires pip install "botocore[crt]" |
