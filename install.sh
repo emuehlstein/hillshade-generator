@@ -185,7 +185,9 @@ info "Installing hillgen..."
 "$VENV_DIR/bin/pip" install --quiet -e .
 
 # Install mbutil if missing
-if ! "$VENV_DIR/bin/python" -c "import mbutil" &>/dev/null; then
+HAS_MBUTIL="no"
+"$VENV_DIR/bin/python" -c "import mbutil" &>/dev/null && HAS_MBUTIL="yes"
+if [[ "$HAS_MBUTIL" == "no" ]]; then
     "$VENV_DIR/bin/pip" install --quiet mbutil
 fi
 
@@ -196,7 +198,13 @@ ok "hillgen installed"
 BIN_DIR="$VENV_DIR/bin"
 PATH_LINE="export PATH=\"$BIN_DIR:\$PATH\""
 
-if grep -qF "hillshade-generator" "$SHELL_RC" 2>/dev/null; then
+# Ensure shell RC file exists
+touch "$SHELL_RC"
+
+HAS_PATH="no"
+grep -qF "hillshade-generator" "$SHELL_RC" 2>/dev/null && HAS_PATH="yes"
+
+if [[ "$HAS_PATH" == "yes" ]]; then
     ok "Shell config already set up"
 else
     echo "" >> "$SHELL_RC"
