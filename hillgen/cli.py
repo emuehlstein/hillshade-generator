@@ -109,9 +109,28 @@ def _ensure_styled(resolved_bbox, dem, theme_name, exaggeration):
     cb = lambda msg: click.echo(msg)
     source = resolve_source(resolved_bbox, dem)
 
+    # S3 push helper — pushes a completed stage file to the private intermediates
+    # bucket if HILLGEN_S3_INTERMEDIATES env var is set (e.g. s3://bucket/prefix/).
+    # Silently skips if boto3 unavailable or var not set.
+    import os as _os
+    _s3_intermediates = _os.environ.get("HILLGEN_S3_INTERMEDIATES", "").rstrip("/")
+
+    def _push_intermediate(path: Path, stage: str):
+        if not _s3_intermediates or not path.exists():
+            return
+        try:
+            import boto3
+            bucket, _, prefix = _s3_intermediates.replace("s3://", "").partition("/")
+            key = f"{prefix}/{stage}/{path.name}" if prefix else f"{stage}/{path.name}"
+            cb(f"  → S3 {_s3_intermediates}/{stage}/{path.name}")
+            boto3.client("s3").upload_file(str(path), bucket, key)
+        except Exception as e:
+            cb(f"  ⚠ S3 push skipped: {e}")
+
     # DEM
     dem_dir = ensure_cache_dir("dem") / source.name
     dem_path = source.download(resolved_bbox, dem_dir, progress_cb=cb)
+    _push_intermediate(dem_path, f"dem/{source.name}")
 
     # Resolve exaggeration (auto if needed)
     if exaggeration and str(exaggeration) != "auto":
@@ -129,6 +148,7 @@ def _ensure_styled(resolved_bbox, dem, theme_name, exaggeration):
         reproj_path = reproj_dir / f"{dem_path.stem}_4326.tif"
         if not reproj_path.exists():
             reproject_to_4326(dem_path, reproj_path, progress_cb=cb)
+            _push_intermediate(reproj_path, "reprojected")
         else:
             click.echo(f"Reproject cached: {reproj_path.name}")
         input_dem = reproj_path
@@ -143,6 +163,11 @@ def _ensure_styled(resolved_bbox, dem, theme_name, exaggeration):
         hs_path = hs_dir / f"{input_dem.stem}_gray_composite_{w_str}_{exag}x.tif"
         if not hs_path.exists():
             generate_composite(input_dem, hs_path, exag, weights=weights, cache_dir=hs_dir, progress_cb=cb)
+            _push_intermediate(hs_path, "hillshade")
+            # Also push sub-layer grayscales (multi/igor/combined)
+            for sub in hs_dir.glob(f"{input_dem.stem}_gray_*_{exag}x.tif"):
+                if sub != hs_path:
+                    _push_intermediate(sub, "hillshade")
         else:
             click.echo(f"Hillshade cached: {hs_path.name}")
     else:
@@ -151,6 +176,7 @@ def _ensure_styled(resolved_bbox, dem, theme_name, exaggeration):
         hs_path = hs_dir / f"{input_dem.stem}_gray_{mode.value}_{exag}x.tif"
         if not hs_path.exists():
             generate_grayscale(input_dem, hs_path, exag, mode=mode, progress_cb=cb)
+            _push_intermediate(hs_path, "hillshade")
         else:
             click.echo(f"Hillshade cached: {hs_path.name}")
 
@@ -160,6 +186,7 @@ def _ensure_styled(resolved_bbox, dem, theme_name, exaggeration):
     if not styled_path.exists():
         elev_dem = input_dem if theme.color_mode == "elevation" else None
         apply_style(hs_path, styled_path, theme, dem_path=elev_dem, progress_cb=cb)
+        _push_intermediate(styled_path, "styled")
     else:
         click.echo(f"Styled cached: {styled_path.name}")
 
