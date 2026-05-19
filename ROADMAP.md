@@ -13,12 +13,15 @@ Development plan for hillgen MVP. Each milestone produces something testable aga
 - **Test:** `pip install -e . && hillgen version`
 
 ### M1: Fetch
-- [ ] `hillgen fetch --bbox "-122.25,46.15,-122.10,46.25" --dem usgs-3dep-10m`
-- [ ] USGS 3DEP downloader (port from ilhmp `download.py`)
-- [ ] `DEMSource` base class + source registry
-- [ ] Writes to `~/.hillgen/cache/dem/`
-- **Test:** valid GeoTIFF, `gdalinfo` shows correct bounds + CRS
-- **Compare:** same bbox fetched via ilhmp — files should be equivalent
+- [x] `hillgen fetch --bbox "-122.25,46.15,-122.10,46.25" --dem usgs-3dep-10m`
+- [x] USGS 3DEP downloader (new, uses TNM S3 `current` URL pattern)
+- [x] `DEMSource` base class + source registry + auto-resolution
+- [x] Writes to `~/.hillgen/cache/dem/`
+- [x] Tile caching (462MB raw tile cached, second run skips download)
+- [x] Clips to exact bbox after download
+- [x] `hillgen sources` lists available sources
+- **Test:** valid GeoTIFF, `gdalinfo` shows correct bounds + CRS ✅
+- **Result:** 1620×1080 px, 577-2535m elevation range, 5.4MB clipped
 
 ### M2: Reproject + Shade
 - [ ] `hillgen reproject --bbox ...` → EPSG:4326, bilinear
@@ -80,7 +83,7 @@ Development plan for hillgen MVP. Each milestone produces something testable aga
 | Milestone | Status | Started | Completed | Notes |
 |-----------|--------|---------|-----------|-------|
 | M0 | ✅ | 2026-05-18 | 2026-05-18 | Skeleton + all subcommand stubs |
-| M1 | | | | |
+| M1 | ✅ | 2026-05-18 | 2026-05-18 | USGS 3DEP 10m, tile caching, bbox clipping |
 | M2 | | | | |
 | M3 | | | | |
 | M4 | | | | |

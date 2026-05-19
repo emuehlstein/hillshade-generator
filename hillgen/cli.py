@@ -89,7 +89,23 @@ def _get_gdal_version():
     return None
 
 
-# Placeholder subcommands — will be implemented in subsequent milestones
+def _resolve_bbox(bbox_str, place):
+    """Resolve a BBox from --bbox or --place."""
+    from .sources.base import BBox
+
+    if bbox_str and place:
+        raise click.UsageError("Specify --bbox or --place, not both")
+    if not bbox_str and not place:
+        raise click.UsageError("Specify --bbox or --place")
+
+    if bbox_str:
+        try:
+            return BBox.from_string(bbox_str)
+        except ValueError as e:
+            raise click.BadParameter(str(e), param_hint="--bbox")
+
+    # Geocoding via --place is M6, stub for now
+    raise click.UsageError("--place not yet implemented (see ROADMAP.md M6). Use --bbox for now.")
 
 @cli.command()
 @click.option("--bbox", type=str, help="Bounding box: west,south,east,north")
@@ -97,8 +113,33 @@ def _get_gdal_version():
 @click.option("--dem", type=str, default="auto", help="DEM source (auto, usgs-3dep-10m, usgs-3dep-1m, copernicus-30m, srtm-30m)")
 def fetch(bbox, place, dem):
     """Download and cache DEM data for an area."""
-    click.echo("Not yet implemented — see ROADMAP.md M1")
-    raise SystemExit(1)
+    resolved_bbox = _resolve_bbox(bbox, place)
+
+    from .sources import resolve_source
+    source = resolve_source(resolved_bbox, dem)
+    click.echo(f"Source: {source.name} ({source.description})")
+
+    from .cache import ensure_cache_dir
+    cache_dir = ensure_cache_dir("dem") / source.name
+
+    result = source.download(
+        resolved_bbox, cache_dir,
+        progress_cb=lambda msg: click.echo(msg),
+    )
+
+    click.echo(f"\nDEM saved to: {result}")
+
+    # Show basic info via gdalinfo
+    try:
+        import subprocess as sp
+        info = sp.run(["gdalinfo", "-stats", str(result)], capture_output=True, text=True, timeout=30)
+        if info.returncode == 0:
+            for line in info.stdout.splitlines():
+                line = line.strip()
+                if any(k in line for k in ["Size is", "Origin", "Pixel Size", "STATISTICS_MINIMUM", "STATISTICS_MAXIMUM"]):
+                    click.echo(f"  {line}")
+    except (FileNotFoundError, Exception):
+        pass
 
 
 @cli.command()
@@ -190,8 +231,9 @@ def themes(tag, show):
 @cli.command()
 def sources():
     """List available DEM sources."""
-    click.echo("Not yet implemented — see ROADMAP.md M1")
-    raise SystemExit(1)
+    from .sources import list_sources
+    for s in list_sources():
+        click.echo(f"  {s.name:20s} {s.resolution_m:6.1f}m  pri={s.priority:3d}  {s.description}")
 
 
 @cli.command()

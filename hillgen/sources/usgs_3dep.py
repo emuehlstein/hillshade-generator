@@ -1,0 +1,189 @@
+"""USGS 3DEP 1/3 arc-second (~10m) DEM source.
+
+Downloads 1°×1° tiles from the USGS 3D Elevation Program via the
+National Map S3 bucket. Tiles are publicly accessible — no auth needed.
+
+URL pattern (current, latest version):
+    https://prd-tnm.s3.amazonaws.com/StagedProducts/Elevation/13/TIFF/current/{tile}/{tile_filename}.tif
+
+Tile naming: n{lat}w{lon} where lat/lon are the NW corner of the 1° cell
+(ceiling of north, ceiling of abs(west)).
+"""
+
+import math
+import subprocess
+import tempfile
+from pathlib import Path
+from typing import List, Optional, Tuple
+
+import click
+import requests
+
+from .base import BBox
+
+# Base URL for 3DEP 1/3 arc-second tiles (current/latest)
+_S3_BASE = "https://prd-tnm.s3.amazonaws.com/StagedProducts/Elevation/13/TIFF/current"
+
+
+class USGS3DEP10m:
+    """USGS 3DEP 1/3 arc-second (~10m resolution), CONUS + HI/AK."""
+
+    name = "usgs-3dep-10m"
+    description = "USGS 3DEP 1/3 arc-second (~10m), covers CONUS, Alaska, Hawaii"
+    resolution_m = 10.0
+    priority = 80
+
+    # Approximate CONUS + AK + HI coverage
+    _coverage_west = -180.0
+    _coverage_east = -60.0
+    _coverage_south = 15.0
+    _coverage_north = 72.0
+
+    def covers(self, bbox: BBox) -> bool:
+        """Check if bbox is within approximate US coverage."""
+        return (
+            bbox.west >= self._coverage_west
+            and bbox.east <= self._coverage_east
+            and bbox.south >= self._coverage_south
+            and bbox.north <= self._coverage_north
+        )
+
+    def download(self, bbox: BBox, output_dir: Path, progress_cb=None) -> Path:
+        """Download 3DEP tiles covering bbox, merge if needed, clip to bbox.
+
+        Returns path to the final clipped GeoTIFF.
+        """
+        output_dir.mkdir(parents=True, exist_ok=True)
+
+        # Determine which 1° tiles we need
+        tiles = self._tiles_for_bbox(bbox)
+        if progress_cb:
+            progress_cb(f"Need {len(tiles)} tile(s): {', '.join(t[0] for t in tiles)}")
+
+        # Download each tile
+        downloaded = []
+        for tile_name, url in tiles:
+            tile_path = output_dir / f"{tile_name}.tif"
+
+            if tile_path.exists():
+                if progress_cb:
+                    progress_cb(f"  {tile_name}: cached")
+                downloaded.append(tile_path)
+                continue
+
+            if progress_cb:
+                progress_cb(f"  {tile_name}: downloading...")
+
+            self._download_tile(url, tile_path)
+            downloaded.append(tile_path)
+
+            if progress_cb:
+                size_mb = tile_path.stat().st_size / (1024 * 1024)
+                progress_cb(f"  {tile_name}: {size_mb:.0f} MB")
+
+        # Merge if multiple tiles, then clip to bbox
+        if len(downloaded) == 1:
+            merged = downloaded[0]
+        else:
+            if progress_cb:
+                progress_cb(f"Merging {len(downloaded)} tiles...")
+            merged = self._merge_tiles(downloaded, output_dir)
+
+        # Clip to exact bbox
+        clipped = output_dir / self._output_filename(bbox)
+        if clipped.exists():
+            clipped.unlink()
+
+        if progress_cb:
+            progress_cb("Clipping to bbox...")
+
+        self._clip_to_bbox(merged, clipped, bbox)
+
+        # Clean up merge temp if we created one
+        merge_tmp = output_dir / "_merged.tif"
+        if merge_tmp.exists() and merge_tmp != clipped:
+            merge_tmp.unlink()
+
+        if progress_cb:
+            size_mb = clipped.stat().st_size / (1024 * 1024)
+            progress_cb(f"Done: {clipped.name} ({size_mb:.1f} MB)")
+
+        return clipped
+
+    def _tiles_for_bbox(self, bbox: BBox) -> List[Tuple[str, str]]:
+        """Return list of (tile_name, download_url) for all 1° tiles covering bbox."""
+        tiles = []
+
+        # 3DEP tiles are named by their NW corner: n{ceil(lat)}w{ceil(abs(lon))}
+        lat_min = math.floor(bbox.south)
+        lat_max = math.floor(bbox.north)
+        lon_min = math.floor(bbox.west)
+        lon_max = math.floor(bbox.east)
+
+        for lat in range(lat_min, lat_max + 1):
+            for lon in range(lon_min, lon_max + 1):
+                # Tile name uses NW corner convention
+                tile_lat = lat + 1  # north edge of the 1° cell
+                tile_lon = abs(lon)  # west edge, expressed as positive
+
+                # Direction prefixes
+                ns = "n" if tile_lat >= 0 else "s"
+                ew = "w" if lon < 0 else "e"
+
+                tile_name = f"{ns}{abs(tile_lat):02d}{ew}{tile_lon:03d}"
+                filename = f"USGS_13_{tile_name}"
+                url = f"{_S3_BASE}/{tile_name}/{filename}.tif"
+                tiles.append((tile_name, url))
+
+        return tiles
+
+    def _download_tile(self, url: str, output: Path):
+        """Download a single tile with streaming."""
+        output.parent.mkdir(parents=True, exist_ok=True)
+        tmp = output.with_suffix(".tmp")
+
+        try:
+            with requests.get(url, stream=True, timeout=30) as r:
+                r.raise_for_status()
+                with open(tmp, "wb") as f:
+                    for chunk in r.iter_content(chunk_size=8 * 1024 * 1024):
+                        f.write(chunk)
+            tmp.rename(output)
+        except Exception:
+            if tmp.exists():
+                tmp.unlink()
+            raise
+
+    def _merge_tiles(self, tiles: List[Path], output_dir: Path) -> Path:
+        """Merge multiple GeoTIFF tiles into one."""
+        merged = output_dir / "_merged.tif"
+        cmd = [
+            "gdal_merge.py", "-o", str(merged),
+            "-co", "COMPRESS=DEFLATE",
+            "-co", "BIGTIFF=IF_SAFER",
+        ] + [str(t) for t in tiles]
+
+        subprocess.run(cmd, check=True, capture_output=True, text=True)
+        return merged
+
+    def _clip_to_bbox(self, input_path: Path, output_path: Path, bbox: BBox):
+        """Clip a raster to exact bounding box."""
+        cmd = [
+            "gdalwarp",
+            "-te", str(bbox.west), str(bbox.south), str(bbox.east), str(bbox.north),
+            "-co", "COMPRESS=DEFLATE",
+            "-co", "TILED=YES",
+            "-co", "BIGTIFF=IF_SAFER",
+            str(input_path),
+            str(output_path),
+        ]
+        subprocess.run(cmd, check=True, capture_output=True, text=True)
+
+    def _output_filename(self, bbox: BBox) -> str:
+        """Generate a deterministic output filename from the bbox."""
+        # Use bbox center for naming
+        lat = (bbox.south + bbox.north) / 2
+        lon = (bbox.west + bbox.east) / 2
+        ns = "n" if lat >= 0 else "s"
+        ew = "w" if lon < 0 else "e"
+        return f"3dep_{ns}{abs(lat):.2f}_{ew}{abs(lon):.2f}.tif"
