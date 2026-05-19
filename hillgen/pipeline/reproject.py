@@ -14,7 +14,7 @@ def native_resolution_deg(input_path: Path) -> tuple[float, float] | None:
     """
     result = subprocess.run(
         ["gdalinfo", "-json", str(input_path)],
-        capture_output=True, text=True, timeout=30,
+        capture_output=True, text=True, timeout=120,
     )
     if result.returncode != 0:
         return None
