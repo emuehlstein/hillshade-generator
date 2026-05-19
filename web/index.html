@@ -284,6 +284,13 @@ footer a:hover { color: var(--accent); }
   <div class="hero-content">
     <h1>Scripted Relief</h1>
     <p>Beautiful terrain maps from real-world elevation data. Free to use.</p>
+    <div style="margin-bottom:24px">
+      <select id="hero-geo-select" onchange="switchGeography(this.value); document.getElementById('geo-select').value=this.value;" style="padding:10px 20px; border-radius:8px; background:rgba(255,255,255,0.15); color:#fff; border:1px solid rgba(255,255,255,0.3); font-size:1rem; backdrop-filter:blur(4px); cursor:pointer; -webkit-appearance:none; appearance:none;">
+        <option value="st-helens" style="color:#000">Mt. St. Helens, WA</option>
+        <option value="mt-rainier" style="color:#000">Mt. Rainier, WA</option>
+        <option value="mauna-kea" style="color:#000">Mauna Kea, Hawaii</option>
+      </select>
+    </div>
     <div class="hero-buttons">
       <a href="#themes" class="btn btn-primary">Browse Themes</a>
       <a href="#generate" class="btn btn-secondary">Generate Your Own</a>
@@ -296,7 +303,7 @@ footer a:hover { color: var(--accent); }
   <h2>Themes</h2>
   <div style="display:flex; align-items:center; gap:16px; margin-bottom:12px; flex-wrap:wrap">
     <p class="subtitle" style="margin-bottom:0">Every theme applied to</p>
-    <select id="geo-select" onchange="switchGeography(this.value)">
+    <select id="geo-select" onchange="switchGeography(this.value); document.getElementById('hero-geo-select').value=this.value;">
       <option value="st-helens">Mt. St. Helens, WA</option>
       <option value="mt-rainier">Mt. Rainier, WA</option>
       <option value="mauna-kea">Mauna Kea, Hawaii</option>
