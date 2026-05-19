@@ -1,0 +1,457 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Scripted Relief — Beautiful Terrain Maps</title>
+<meta name="description" content="Beautiful hillshade maps from real-world terrain data. Free to use. Browse the library or generate your own.">
+<meta property="og:title" content="Scripted Relief">
+<meta property="og:description" content="Beautiful terrain maps. Free to use.">
+<meta property="og:image" content="previews/alpine-glacier.png">
+<meta property="og:type" content="website">
+<meta property="og:url" content="https://scriptedrelief.com">
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="https://unpkg.com/pmtiles@3.0.6/dist/pmtiles.js"></script>
+<style>
+:root {
+  --bg: #0a0a0f;
+  --surface: #14141f;
+  --surface2: #1e1e2e;
+  --text: #e0e0e8;
+  --text-dim: #8888a0;
+  --accent: #5b8def;
+  --accent-hover: #7ba5ff;
+  --radius: 10px;
+}
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  line-height: 1.6;
+}
+a { color: var(--accent); text-decoration: none; }
+a:hover { color: var(--accent-hover); }
+
+/* Hero */
+.hero {
+  position: relative;
+  height: 85vh;
+  min-height: 500px;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+}
+.hero-bg {
+  position: absolute;
+  inset: 0;
+  background: url('previews/alpine-glacier.png') center/cover;
+  filter: brightness(0.4);
+  z-index: 0;
+}
+.hero-content {
+  position: relative;
+  z-index: 1;
+  max-width: 700px;
+  padding: 0 24px;
+}
+.hero h1 {
+  font-size: clamp(2.5rem, 6vw, 4.5rem);
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  margin-bottom: 16px;
+  background: linear-gradient(135deg, #e0e0e8, #5b8def);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+.hero p {
+  font-size: 1.25rem;
+  color: var(--text-dim);
+  margin-bottom: 32px;
+}
+.hero-buttons {
+  display: flex;
+  gap: 16px;
+  justify-content: center;
+  flex-wrap: wrap;
+}
+.btn {
+  display: inline-block;
+  padding: 14px 28px;
+  border-radius: var(--radius);
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+  border: none;
+}
+.btn-primary {
+  background: var(--accent);
+  color: #fff;
+}
+.btn-primary:hover { background: var(--accent-hover); color: #fff; }
+.btn-secondary {
+  background: var(--surface2);
+  color: var(--text);
+  border: 1px solid #333;
+}
+.btn-secondary:hover { background: #2a2a3a; color: #fff; }
+
+/* Section */
+section {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 80px 24px;
+}
+section h2 {
+  font-size: 2rem;
+  font-weight: 700;
+  margin-bottom: 12px;
+}
+section .subtitle {
+  color: var(--text-dim);
+  font-size: 1.1rem;
+  margin-bottom: 40px;
+}
+
+/* Theme Gallery */
+.theme-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 20px;
+}
+.theme-card {
+  background: var(--surface);
+  border-radius: var(--radius);
+  overflow: hidden;
+  transition: transform 0.2s, box-shadow 0.2s;
+  cursor: pointer;
+}
+.theme-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 12px 40px rgba(0,0,0,0.4);
+}
+.theme-card img {
+  width: 100%;
+  aspect-ratio: 16/10;
+  object-fit: cover;
+  display: block;
+}
+.theme-card .placeholder {
+  width: 100%;
+  aspect-ratio: 16/10;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 2rem;
+  color: var(--text-dim);
+}
+.theme-card-body {
+  padding: 16px;
+}
+.theme-card-body h3 {
+  font-size: 1.1rem;
+  font-weight: 600;
+  margin-bottom: 4px;
+  text-transform: capitalize;
+}
+.theme-card-body p {
+  font-size: 0.85rem;
+  color: var(--text-dim);
+  line-height: 1.4;
+}
+.theme-card-body .tags {
+  margin-top: 8px;
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+.tag {
+  font-size: 0.7rem;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: var(--surface2);
+  color: var(--text-dim);
+}
+
+/* Map viewer */
+#map-section {
+  padding: 40px 24px 80px;
+}
+#map-container {
+  max-width: 1200px;
+  margin: 0 auto;
+}
+#map {
+  width: 100%;
+  height: 500px;
+  border-radius: var(--radius);
+  background: #111;
+}
+#map-controls {
+  display: flex;
+  gap: 12px;
+  margin-top: 16px;
+  flex-wrap: wrap;
+  align-items: center;
+}
+#map-controls select {
+  padding: 8px 16px;
+  border-radius: 6px;
+  background: var(--surface);
+  color: var(--text);
+  border: 1px solid #333;
+  font-size: 0.9rem;
+}
+#zoom-badge {
+  padding: 6px 12px;
+  border-radius: 6px;
+  background: var(--surface);
+  color: var(--text-dim);
+  font-family: monospace;
+  font-size: 0.85rem;
+}
+
+/* CTA section */
+.cta-section {
+  background: var(--surface);
+  border-radius: var(--radius);
+  padding: 48px;
+  text-align: center;
+  max-width: 800px;
+  margin: 0 auto 80px;
+}
+.cta-section h2 { margin-bottom: 16px; }
+.cta-section p { color: var(--text-dim); margin-bottom: 24px; }
+.code-block {
+  background: var(--bg);
+  border: 1px solid #333;
+  border-radius: 8px;
+  padding: 20px;
+  font-family: 'SF Mono', 'Fira Code', monospace;
+  font-size: 0.9rem;
+  color: var(--accent);
+  text-align: left;
+  overflow-x: auto;
+  margin-bottom: 20px;
+  position: relative;
+}
+.code-block .copy-btn {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  background: var(--surface2);
+  border: 1px solid #444;
+  color: var(--text-dim);
+  padding: 4px 10px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 0.75rem;
+}
+.code-block .copy-btn:hover { color: var(--text); border-color: #666; }
+
+/* Footer */
+footer {
+  text-align: center;
+  padding: 40px 24px;
+  color: var(--text-dim);
+  font-size: 0.85rem;
+  border-top: 1px solid #1e1e2e;
+}
+footer a { color: var(--text-dim); }
+footer a:hover { color: var(--accent); }
+</style>
+</head>
+<body>
+
+<!-- Hero -->
+<div class="hero">
+  <div class="hero-bg"></div>
+  <div class="hero-content">
+    <h1>Scripted Relief</h1>
+    <p>Beautiful terrain maps from real-world elevation data. Free to use.</p>
+    <div class="hero-buttons">
+      <a href="#themes" class="btn btn-primary">Browse Themes</a>
+      <a href="#generate" class="btn btn-secondary">Generate Your Own</a>
+    </div>
+  </div>
+</div>
+
+<!-- Theme Gallery -->
+<section id="themes">
+  <h2>Themes</h2>
+  <p class="subtitle">Every theme applied to Mt. St. Helens. Click to preview on the map.</p>
+  <div class="theme-grid" id="theme-grid"></div>
+</section>
+
+<!-- Map Viewer -->
+<section id="map-section">
+  <h2>Explore</h2>
+  <p class="subtitle">Pan, zoom, and compare themes interactively.</p>
+  <div id="map-container">
+    <div id="map"></div>
+    <div id="map-controls">
+      <select id="theme-select"></select>
+      <span id="zoom-badge">z12</span>
+    </div>
+  </div>
+</section>
+
+<!-- Generate CTA -->
+<section id="generate">
+  <div class="cta-section">
+    <h2>Generate Your Own</h2>
+    <p>One command. Any place on Earth. 22 themes included.</p>
+    <div class="code-block">
+      <button class="copy-btn" onclick="copyCode()">Copy</button>
+      pip install hillgen<br><br>
+      hillgen run --place "Crater Lake" --theme midnight
+    </div>
+    <a href="https://github.com/emuehlstein/hillshade-generator" class="btn btn-primary">View on GitHub</a>
+  </div>
+</section>
+
+<footer>
+  <p>
+    Built with <a href="https://github.com/emuehlstein/hillshade-generator">hillgen</a>.
+    Terrain data from USGS 3DEP, Copernicus, SRTM — public domain.
+    Free to use, credit appreciated.
+  </p>
+</footer>
+
+<script>
+// Load catalog and build the page
+const PMTILES_BASE = '';  // relative to site root
+const PREVIEW_THEMES = ['alpine-glacier','midnight','daylight','magma','vivid','desert-sun','aurora','infrared','cool','tactical','simmon','vivid-elevation','cool-elevation','volcanic-ash','forest-canopy','ocean-depth','toxic','sunset-ridge','topo-classic','grayscale','flat-terrain'];
+
+let catalog = null;
+let map = null;
+let currentLayer = null;
+
+async function init() {
+  try {
+    const resp = await fetch('catalog.json');
+    catalog = await resp.json();
+  } catch(e) {
+    catalog = { layers: [], themes: [] };
+  }
+  buildThemeGrid();
+  initMap();
+}
+
+function buildThemeGrid() {
+  const grid = document.getElementById('theme-grid');
+  const themes = catalog.themes || [];
+
+  // Show preview themes first, then the rest
+  const ordered = [
+    ...PREVIEW_THEMES.map(n => themes.find(t => t.name === n)).filter(Boolean),
+    ...themes.filter(t => !PREVIEW_THEMES.includes(t.name))
+  ];
+
+  ordered.forEach(theme => {
+    const hasPreview = PREVIEW_THEMES.includes(theme.name);
+    const card = document.createElement('div');
+    card.className = 'theme-card';
+    card.onclick = () => scrollToMap(theme.name);
+
+    const imgHtml = hasPreview
+      ? `<img src="previews/${theme.name}.png" alt="${theme.name} hillshade" loading="lazy">`
+      : `<div class="placeholder" style="background:${theme.color || '#222'}">◆</div>`;
+
+    card.innerHTML = `
+      ${imgHtml}
+      <div class="theme-card-body">
+        <h3>${theme.name}</h3>
+        <p>${theme.description}</p>
+        <div class="tags">${(theme.tags || []).map(t => `<span class="tag">${t}</span>`).join('')}</div>
+      </div>
+    `;
+    grid.appendChild(card);
+  });
+}
+
+function initMap() {
+  map = L.map('map').setView([46.2, -122.175], 12);
+
+  L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}@2x.png', {
+    attribution: '&copy; OSM &copy; CARTO',
+    maxZoom: 20,
+  }).addTo(map);
+
+  // Zoom badge
+  const badge = document.getElementById('zoom-badge');
+  map.on('zoomend', () => badge.textContent = 'z' + map.getZoom());
+  badge.textContent = 'z' + map.getZoom();
+
+  // Build theme selector
+  const select = document.getElementById('theme-select');
+  (catalog.themes || []).forEach(t => {
+    const opt = document.createElement('option');
+    opt.value = t.name;
+    opt.textContent = t.name;
+    select.appendChild(opt);
+  });
+  select.onchange = () => loadThemeOnMap(select.value);
+
+  // Load first layer if available
+  if (catalog.layers && catalog.layers.length > 0) {
+    loadPMTilesLayer(catalog.layers[0]);
+    select.value = catalog.layers[0].theme;
+  }
+}
+
+function loadPMTilesLayer(layer) {
+  if (currentLayer) map.removeLayer(currentLayer);
+
+  // PMTiles via direct S3 URL
+  const url = layer.pmtiles.startsWith('http') ? layer.pmtiles : PMTILES_BASE + layer.pmtiles;
+
+  // For now, use the raster tile URL pattern from mbtileserver or direct XYZ
+  // PMTiles protocol requires the pmtiles JS adapter with Leaflet
+  // Fallback: just show the preview as an image overlay
+  if (layer.bounds) {
+    const bounds = [[layer.bounds[1], layer.bounds[0]], [layer.bounds[3], layer.bounds[2]]];
+    const preview = `previews/${layer.theme}.png`;
+    currentLayer = L.imageOverlay(preview, bounds, { opacity: 0.9 }).addTo(map);
+    map.fitBounds(bounds);
+  }
+}
+
+function loadThemeOnMap(themeName) {
+  // Check if we have a published layer for this theme
+  const layer = (catalog.layers || []).find(l => l.theme === themeName);
+  if (layer) {
+    loadPMTilesLayer(layer);
+    return;
+  }
+  // Otherwise show preview as image overlay on St Helens bbox
+  if (currentLayer) map.removeLayer(currentLayer);
+  const bounds = [[46.15, -122.25], [46.25, -122.10]];
+  const preview = `previews/${themeName}.png`;
+  currentLayer = L.imageOverlay(preview, bounds, { opacity: 0.9 }).addTo(map);
+  map.fitBounds(bounds);
+}
+
+function scrollToMap(themeName) {
+  const select = document.getElementById('theme-select');
+  select.value = themeName;
+  loadThemeOnMap(themeName);
+  document.getElementById('map-section').scrollIntoView({ behavior: 'smooth' });
+}
+
+function copyCode() {
+  const text = 'pip install hillgen && hillgen run --place "Crater Lake" --theme midnight';
+  navigator.clipboard.writeText(text);
+  const btn = document.querySelector('.copy-btn');
+  btn.textContent = 'Copied!';
+  setTimeout(() => btn.textContent = 'Copy', 2000);
+}
+
+init();
+</script>
+</body>
+</html>

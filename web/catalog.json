@@ -1,0 +1,43 @@
+{
+  "generated": "2026-05-18T20:05:00Z",
+  "layers": [
+    {
+      "area": "mt-st-helens",
+      "name": "Mt. St. Helens",
+      "theme": "midnight",
+      "description": "Deep blue-black with subtle terrain detail",
+      "exaggeration": 3,
+      "dem_source": "USGS 3DEP 1/3 arc-second",
+      "zoom": [10, 14],
+      "bounds": [-122.25, 46.15, -122.10, 46.25],
+      "center": [-122.175, 46.2],
+      "pmtiles": "tiles/3dep_n46.20_w122.17_4326_midnight_3.0x.pmtiles",
+      "preview": "previews/midnight.png",
+      "size_mb": 4.9,
+      "tags": ["dark", "basemap"]
+    }
+  ],
+  "themes": [
+    {"name": "alpine-glacier", "description": "Deep indigo valleys to teal forests to icy white summit", "color": "#2a3a6b", "tags": ["elevation", "alpine"]},
+    {"name": "midnight", "description": "Deep blue-black with subtle terrain detail", "color": "#1a2845", "tags": ["dark", "basemap"]},
+    {"name": "daylight", "description": "Warm grey with soft shadows", "color": "#c8c0b4", "tags": ["light", "basemap"]},
+    {"name": "magma", "description": "Black to deep purple to red to orange to pale yellow", "color": "#8b1a1a", "tags": ["elevation", "experimental"]},
+    {"name": "vivid", "description": "Saturated blue to green to orange to red", "color": "#ff6633", "tags": ["vivid", "dark"]},
+    {"name": "desert-sun", "description": "Rust canyons to sandy mesas to bleached white peaks", "color": "#b87333", "tags": ["elevation", "experimental"]},
+    {"name": "aurora", "description": "Deep space to midnight blue to electric teal to neon green", "color": "#00cc88", "tags": ["elevation", "experimental"]},
+    {"name": "infrared", "description": "False-color thermal: black to purple to cyan to yellow to red", "color": "#cc2244", "tags": ["elevation", "experimental"]},
+    {"name": "cool", "description": "Desaturated blue-grey, cartographic", "color": "#6a7d8a", "tags": ["cool", "cartographic"]},
+    {"name": "tactical", "description": "Muted green-brown, high contrast", "color": "#3d4a2f", "tags": ["tactical", "dark"]},
+    {"name": "simmon", "description": "Robert Simmon's composite technique with aspect depth cues", "color": "#1e3050", "tags": ["dark", "publication"]},
+    {"name": "vivid-elevation", "description": "Elevation-mapped vivid: blue low to green to orange to red high", "color": "#e85520", "tags": ["vivid", "elevation"]},
+    {"name": "cool-elevation", "description": "Elevation-mapped cool blue-grey", "color": "#4a6878", "tags": ["cool", "elevation"]},
+    {"name": "volcanic-ash", "description": "Charcoal base to warm ash grey to bone white", "color": "#8a8478", "tags": ["elevation", "experimental"]},
+    {"name": "forest-canopy", "description": "Near-black forest floor to dark green to bright canopy", "color": "#2d5a1e", "tags": ["elevation", "experimental"]},
+    {"name": "ocean-depth", "description": "Deep ocean blue at valleys to pale aqua at summit", "color": "#1a3a5a", "tags": ["elevation", "experimental"]},
+    {"name": "toxic", "description": "Dark olive to poison green to acid yellow", "color": "#6b8a1a", "tags": ["elevation", "experimental"]},
+    {"name": "sunset-ridge", "description": "Deep violet night to rose to amber to pale gold summit", "color": "#cc6644", "tags": ["elevation", "experimental"]},
+    {"name": "topo-classic", "description": "USGS hypsometric: green lowlands to tan to brown to grey to white", "color": "#8b9a5a", "tags": ["elevation", "cartographic"]},
+    {"name": "grayscale", "description": "Pure hillshade, no color — use as a base layer", "color": "#888888", "tags": ["gray", "base"]},
+    {"name": "flat-terrain", "description": "Heavy 9x exaggeration for subtle landscapes", "color": "#1a2845", "tags": ["dark", "flat"]}
+  ]
+}
