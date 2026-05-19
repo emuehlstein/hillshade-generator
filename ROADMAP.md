@@ -45,12 +45,13 @@ Development plan for hillgen MVP. Each milestone produces something testable aga
 - **Test:** midnight + alpine-glacier opened for visual verification ⬅️
 
 ### M4: Tile + Package
-- [ ] `hillgen tile` — gdal2tiles, XYZ coordinates (not TMS)
-- [ ] `hillgen package` — tile dir → MBTiles + PMTiles
-- [ ] Metadata injection (bounds, center, attribution, scheme)
-- [ ] `hillgen view` — local Leaflet tile viewer
-- **Test:** `hillgen view` serves tiles, visually verify in browser
-- **Regression:** verify TMS/XYZ correctness (the DuPage bug)
+- [x] `hillgen tile` — gdal2tiles --xyz (not --tms, fixing the DuPage bug from day 1)
+- [x] `hillgen package` — tile dir → MBTiles + PMTiles
+- [x] Metadata injection (bounds, center, name, zoom, scheme=xyz)
+- [x] `hillgen view` — local Leaflet tile viewer with dark basemap
+- [x] `_ensure_styled` helper — shared pipeline logic for tile/package/run
+- **Test:** viewer launched at localhost:9876, tiles rendering in browser ⬅️
+- **Result:** 81 tiles z10-14, MBTiles 5.0MB, PMTiles 4.9MB
 
 **— `hillgen run --bbox ... --theme midnight` works end to end —**
 
@@ -92,7 +93,7 @@ Development plan for hillgen MVP. Each milestone produces something testable aga
 | M1 | ✅ | 2026-05-18 | 2026-05-18 | USGS 3DEP 10m, tile caching, bbox clipping |
 | M2 | ✅ | 2026-05-18 | 2026-05-18 | Reproject (NAD83→4326) + composite shading |
 | M3 | ✅ | 2026-05-18 | 2026-05-18 | 22 themes, ramp + elevation color modes |
-| M4 | | | | |
+| M4 | ✅ | 2026-05-18 | 2026-05-18 | gdal2tiles XYZ, mbtiles+pmtiles, Leaflet viewer |
 | M5 | | | | |
 | M6 | | | | |
 | M7 | | | | |

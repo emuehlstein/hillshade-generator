@@ -12,6 +12,7 @@ Usage:
 import shutil
 import subprocess
 import sys
+from pathlib import Path
 
 import click
 
@@ -87,6 +88,73 @@ def _get_gdal_version():
         pass
 
     return None
+
+
+def _ensure_styled(resolved_bbox, dem, theme_name, exaggeration):
+    """Run fetch → reproject → shade → style, returning the styled raster path.
+
+    Reuses cache at every stage.
+    """
+    from .themes import get_theme
+    from .sources import resolve_source
+    from .cache import ensure_cache_dir
+    from .pipeline.reproject import reproject_to_4326, needs_reproject
+    from .pipeline.hillshade import generate_grayscale, generate_composite, ShadingMode
+    from .pipeline.style import apply_style
+
+    theme = get_theme(theme_name)
+    if theme is None:
+        raise click.BadParameter(f"Unknown theme: {theme_name}", param_hint="--theme")
+
+    exag = exaggeration or theme.get_exaggeration_value() or 3.0
+    cb = lambda msg: click.echo(msg)
+    source = resolve_source(resolved_bbox, dem)
+
+    # DEM
+    dem_dir = ensure_cache_dir("dem") / source.name
+    dem_path = source.download(resolved_bbox, dem_dir, progress_cb=cb)
+
+    # Reproject
+    if needs_reproject(dem_path):
+        reproj_dir = ensure_cache_dir("reprojected")
+        reproj_path = reproj_dir / f"{dem_path.stem}_4326.tif"
+        if not reproj_path.exists():
+            reproject_to_4326(dem_path, reproj_path, progress_cb=cb)
+        else:
+            click.echo(f"Reproject cached: {reproj_path.name}")
+        input_dem = reproj_path
+    else:
+        input_dem = dem_path
+
+    # Hillshade
+    hs_dir = ensure_cache_dir("hillshade")
+    if theme.shading == "composite":
+        weights = theme.composite_weights
+        w_str = "-".join(str(w) for w in weights)
+        hs_path = hs_dir / f"{input_dem.stem}_gray_composite_{w_str}_{exag}x.tif"
+        if not hs_path.exists():
+            generate_composite(input_dem, hs_path, exag, weights=weights, cache_dir=hs_dir, progress_cb=cb)
+        else:
+            click.echo(f"Hillshade cached: {hs_path.name}")
+    else:
+        mode_str = "multi" if theme.shading == "multidirectional" else theme.shading
+        mode = ShadingMode(mode_str)
+        hs_path = hs_dir / f"{input_dem.stem}_gray_{mode.value}_{exag}x.tif"
+        if not hs_path.exists():
+            generate_grayscale(input_dem, hs_path, exag, mode=mode, progress_cb=cb)
+        else:
+            click.echo(f"Hillshade cached: {hs_path.name}")
+
+    # Style
+    styled_dir = ensure_cache_dir("styled")
+    styled_path = styled_dir / f"{input_dem.stem}_{theme.name}_{exag}x.tif"
+    if not styled_path.exists():
+        elev_dem = input_dem if theme.color_mode == "elevation" else None
+        apply_style(hs_path, styled_path, theme, dem_path=elev_dem, progress_cb=cb)
+    else:
+        click.echo(f"Styled cached: {styled_path.name}")
+
+    return styled_path
 
 
 def _resolve_bbox(bbox_str, place):
@@ -322,25 +390,100 @@ def style(bbox, place, dem, theme_name, exaggeration):
 @cli.command()
 @click.option("--bbox", type=str, help="Bounding box: west,south,east,north")
 @click.option("--place", type=str, help="Place name (geocoded via Nominatim)")
-@click.option("--theme", type=str, required=True, help="Theme name")
-@click.option("--exaggeration", type=str, default="auto")
+@click.option("--dem", type=str, default="auto", help="DEM source")
+@click.option("--theme", "theme_name", type=str, required=True, help="Theme name")
+@click.option("--exaggeration", type=float, default=None, help="Override theme exaggeration")
 @click.option("--zoom", type=str, default="10-16", help="Zoom range (e.g. 10-16)")
-def tile(bbox, place, theme, exaggeration, zoom):
+def tile(bbox, place, dem, theme_name, exaggeration, zoom):
     """Cut a styled raster into XYZ tiles."""
-    click.echo("Not yet implemented — see ROADMAP.md M4")
-    raise SystemExit(1)
+    resolved_bbox = _resolve_bbox(bbox, place)
+    styled_path = _ensure_styled(resolved_bbox, dem, theme_name, exaggeration)
+
+    from .pipeline.tiler import generate_tiles
+    from .cache import ensure_cache_dir
+
+    tiles_dir = ensure_cache_dir("tiles") / f"{styled_path.stem}_z{zoom}"
+    if tiles_dir.exists() and any(tiles_dir.rglob("*.png")):
+        count = sum(1 for _ in tiles_dir.rglob("*.png"))
+        click.echo(f"Cached: {tiles_dir} ({count:,} tiles)")
+        return
+
+    generate_tiles(styled_path, tiles_dir, zoom=zoom, progress_cb=lambda msg: click.echo(msg))
+    click.echo(f"\nTiles: {tiles_dir}")
 
 
 @cli.command()
 @click.option("--bbox", type=str, help="Bounding box: west,south,east,north")
 @click.option("--place", type=str, help="Place name (geocoded via Nominatim)")
-@click.option("--theme", type=str, required=True, help="Theme name")
-@click.option("--exaggeration", type=str, default="auto")
-@click.option("--format", "output_format", type=str, default="pmtiles,mbtiles", help="Output formats (pmtiles, mbtiles, dir)")
-def package(bbox, place, theme, exaggeration, output_format):
+@click.option("--dem", type=str, default="auto", help="DEM source")
+@click.option("--theme", "theme_name", type=str, required=True, help="Theme name")
+@click.option("--exaggeration", type=float, default=None, help="Override theme exaggeration")
+@click.option("--zoom", type=str, default="10-16", help="Zoom range")
+@click.option("--format", "output_format", type=str, default="pmtiles,mbtiles", help="Output formats")
+@click.option("--output", type=click.Path(), help="Output directory")
+def package(bbox, place, dem, theme_name, exaggeration, zoom, output_format, output):
     """Package tiles into MBTiles and/or PMTiles."""
-    click.echo("Not yet implemented — see ROADMAP.md M4")
-    raise SystemExit(1)
+    resolved_bbox = _resolve_bbox(bbox, place)
+    styled_path = _ensure_styled(resolved_bbox, dem, theme_name, exaggeration)
+
+    from .pipeline.tiler import generate_tiles
+    from .pipeline.packager import package_mbtiles, package_pmtiles, metadata_from_raster
+    from .cache import ensure_cache_dir
+    from .themes import get_theme
+
+    theme = get_theme(theme_name)
+    exag = exaggeration or (theme.get_exaggeration_value() if theme else None) or 3.0
+    cb = lambda msg: click.echo(msg)
+
+    # Ensure tiles exist
+    tiles_dir = ensure_cache_dir("tiles") / f"{styled_path.stem}_z{zoom}"
+    if not tiles_dir.exists() or not any(tiles_dir.rglob("*.png")):
+        generate_tiles(styled_path, tiles_dir, zoom=zoom, progress_cb=cb)
+
+    # Output location
+    out_dir = Path(output) if output else Path("./output")
+    out_dir.mkdir(parents=True, exist_ok=True)
+
+    base_name = f"{styled_path.stem}"
+    meta = metadata_from_raster(styled_path)
+    from .pipeline.tiler import parse_zoom
+    min_z, max_z = parse_zoom(zoom)
+
+    formats = [f.strip() for f in output_format.split(",")]
+
+    mbtiles_path = None
+    if "mbtiles" in formats:
+        mbtiles_path = out_dir / f"{base_name}.mbtiles"
+        package_mbtiles(
+            tiles_dir, mbtiles_path,
+            name=base_name,
+            description=f"{theme_name} hillshade, {exag}x exaggeration",
+            bounds=meta["bounds"],
+            center=f"{meta['center']},{min_z}",
+            min_zoom=min_z, max_zoom=max_z,
+            progress_cb=cb,
+        )
+
+    if "pmtiles" in formats:
+        if mbtiles_path is None:
+            # Need mbtiles as intermediate
+            mbtiles_path = out_dir / f"{base_name}.mbtiles"
+            package_mbtiles(
+                tiles_dir, mbtiles_path,
+                name=base_name,
+                bounds=meta["bounds"],
+                center=f"{meta['center']},{min_z}",
+                min_zoom=min_z, max_zoom=max_z,
+                progress_cb=cb,
+            )
+        pmtiles_path = out_dir / f"{base_name}.pmtiles"
+        package_pmtiles(mbtiles_path, pmtiles_path, progress_cb=cb)
+
+        # Clean up intermediate mbtiles if not requested
+        if "mbtiles" not in formats and mbtiles_path.exists():
+            mbtiles_path.unlink()
+
+    click.echo(f"\nOutput: {out_dir}")
 
 
 @cli.command()
@@ -415,8 +558,8 @@ def sources():
 @click.option("--port", type=int, default=9999, help="Server port")
 def view(path, port):
     """Start a local tile viewer."""
-    click.echo("Not yet implemented — see ROADMAP.md M4")
-    raise SystemExit(1)
+    from .viewer import serve_tiles
+    serve_tiles(Path(path), port=port)
 
 
 @cli.command()
