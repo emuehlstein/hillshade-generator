@@ -114,8 +114,8 @@ def _ensure_styled(resolved_bbox, dem, theme_name, exaggeration):
     dem_path = source.download(resolved_bbox, dem_dir, progress_cb=cb)
 
     # Resolve exaggeration (auto if needed)
-    if exaggeration:
-        exag = exaggeration
+    if exaggeration and str(exaggeration) != "auto":
+        exag = float(exaggeration)
     elif theme.get_exaggeration_value():
         exag = theme.get_exaggeration_value()
     else:
@@ -521,7 +521,7 @@ def package(bbox, place, dem, theme_name, exaggeration, zoom, output_format, out
 @click.option("--bbox", type=str, help="Bounding box: west,south,east,north")
 @click.option("--place", type=str, help="Place name (geocoded via Nominatim)")
 @click.option("--theme", type=str, required=True, help="Theme name")
-@click.option("--exaggeration", type=str, default="auto")
+@click.option("--exaggeration", type=str, default=None, help="Vertical exaggeration (number or omit for auto)")
 @click.option("--dem", type=str, default="auto", help="DEM source")
 @click.option("--zoom", type=str, default="10-16", help="Zoom range")
 @click.option("--format", "output_format", type=str, default="pmtiles,mbtiles")
