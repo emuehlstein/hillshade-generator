@@ -68,6 +68,7 @@ def generate_tiles(
         "-w", "none",
         "--xyz",              # XYZ coordinates, NOT TMS
         "--processes=4",
+        "-r", "lanczos",     # Sharp resampling — preserves edges vs default 'average'
         str(input_raster),
         str(output_dir),
     ]
