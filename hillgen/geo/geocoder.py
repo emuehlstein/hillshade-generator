@@ -18,12 +18,16 @@ _DEFAULT_BUFFER_DEG = 0.1  # ~11km at equator
 def geocode(place: str, buffer_deg: float = _DEFAULT_BUFFER_DEG) -> BBox:
     """Geocode a place name to a bounding box.
 
-    For area features (cities, parks, counties), uses the returned boundingbox.
-    For point features (peaks, addresses), adds a buffer around the point.
+    For area features (cities, parks, counties), uses the returned boundingbox
+    and adds buffer_deg padding around it.
+    For point features (peaks, addresses), adds buffer_deg around the point.
+
+    The buffer is always applied — for areas it expands the boundary so you
+    get surrounding context, for points it defines the coverage area.
 
     Args:
         place: Place name (e.g. "Mt. St. Helens", "Crater Lake", "Cook County, IL")
-        buffer_deg: Buffer in degrees for point features (default ~11km)
+        buffer_deg: Buffer in degrees added around the result (default ~11km)
 
     Returns:
         BBox in WGS84
@@ -56,7 +60,7 @@ def geocode(place: str, buffer_deg: float = _DEFAULT_BUFFER_DEG) -> BBox:
 
         # Check if it's effectively a point (tiny bbox)
         if abs(north - south) < 0.001 and abs(east - west) < 0.001:
-            # Point feature — add buffer
+            # Point feature — buffer defines the area
             lat = float(result["lat"])
             lon = float(result["lon"])
             return BBox(
@@ -66,7 +70,13 @@ def geocode(place: str, buffer_deg: float = _DEFAULT_BUFFER_DEG) -> BBox:
                 north=lat + buffer_deg,
             )
 
-        return BBox(west=west, south=south, east=east, north=north)
+        # Area feature — expand boundary by buffer for surrounding context
+        return BBox(
+            west=max(-180, west - buffer_deg),
+            south=max(-90, south - buffer_deg),
+            east=min(180, east + buffer_deg),
+            north=min(90, north + buffer_deg),
+        )
 
     # Fallback to lat/lon point + buffer
     lat = float(result["lat"])

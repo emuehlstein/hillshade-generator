@@ -166,7 +166,7 @@ def _ensure_styled(resolved_bbox, dem, theme_name, exaggeration):
     return styled_path
 
 
-def _resolve_bbox(bbox_str, place):
+def _resolve_bbox(bbox_str, place, buffer_deg=None):
     """Resolve a BBox from --bbox or --place."""
     from .sources.base import BBox
 
@@ -177,13 +177,23 @@ def _resolve_bbox(bbox_str, place):
 
     if bbox_str:
         try:
-            return BBox.from_string(bbox_str)
+            bbox = BBox.from_string(bbox_str)
+            # Apply buffer to explicit bbox if requested
+            if buffer_deg:
+                bbox = BBox(
+                    west=max(-180, bbox.west - buffer_deg),
+                    south=max(-90, bbox.south - buffer_deg),
+                    east=min(180, bbox.east + buffer_deg),
+                    north=min(90, bbox.north + buffer_deg),
+                )
+            return bbox
         except ValueError as e:
             raise click.BadParameter(str(e), param_hint="--bbox")
 
     from .geo.geocoder import geocode
+    buf = buffer_deg if buffer_deg is not None else 0.1  # default ~11km
     try:
-        bbox = geocode(place)
+        bbox = geocode(place, buffer_deg=buf)
         click.echo(f"Geocoded '{place}' → {bbox}")
         return bbox
     except ValueError as e:
@@ -193,9 +203,10 @@ def _resolve_bbox(bbox_str, place):
 @click.option("--bbox", type=str, help="Bounding box: west,south,east,north")
 @click.option("--place", type=str, help="Place name (geocoded via Nominatim)")
 @click.option("--dem", type=str, default="auto", help="DEM source (auto, usgs-3dep-10m, usgs-3dep-1m, copernicus-30m, srtm-30m)")
-def fetch(bbox, place, dem):
+@click.option("--buffer", "buffer_deg", type=float, default=None, help="Buffer in degrees around area (default 0.1° ≈ 11km)")
+def fetch(bbox, place, dem, buffer_deg):
     """Download and cache DEM data for an area."""
-    resolved_bbox = _resolve_bbox(bbox, place)
+    resolved_bbox = _resolve_bbox(bbox, place, buffer_deg=buffer_deg)
 
     from .sources import resolve_source
     source = resolve_source(resolved_bbox, dem)
@@ -519,12 +530,13 @@ def package(bbox, place, dem, theme_name, exaggeration, zoom, output_format, out
 @click.option("--contribute", is_flag=True, help="Upload intermediates to public S3 cache")
 @click.option("--no-cache", is_flag=True, help="Skip S3 cache reads (fully offline)")
 @click.option("--s3-cache", type=str, help="Custom S3 cache bucket (default: s3://scriptedrelief-data/)")
+@click.option("--buffer", "buffer_deg", type=float, default=None, help="Buffer in degrees around area (default 0.1° ≈ 11km)")
 @click.option("--stop-after", type=click.Choice(["fetch", "reproject", "shade", "style", "tile", "package"]))
 @click.option("--start-from", type=click.Choice(["fetch", "reproject", "shade", "style", "tile", "package"]))
 def run(bbox, place, theme, exaggeration, dem, zoom, output_format, output,
-        keep_intermediates, contribute, no_cache, s3_cache, stop_after, start_from):
+        keep_intermediates, contribute, no_cache, s3_cache, buffer_deg, stop_after, start_from):
     """Full pipeline: fetch → reproject → shade → style → tile → package."""
-    resolved_bbox = _resolve_bbox(bbox, place)
+    resolved_bbox = _resolve_bbox(bbox, place, buffer_deg=buffer_deg)
     cb = lambda msg: click.echo(msg)
 
     # Stages in order
