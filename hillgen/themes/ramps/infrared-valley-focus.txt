@@ -1,0 +1,14 @@
+# Infrared Valley-Focus — full spectrum spread across lower 60%; upper flanks and summit compressed into orange/red
+# Valley floors show the full rainbow; everything above mid-slope is warm
+0%    5   5  10 255
+8%   30  10  80 255
+17%  20  40 160 255
+26%   0 120 180 255
+36%   0 180 160 255
+46%  20 200  80 255
+56% 160 210   0 255
+66% 230 180   0 255
+78% 240  80   0 255
+88% 228  35   5 255
+100% 220  10  10 255
+nv 0 0 0 0

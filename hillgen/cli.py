@@ -242,12 +242,81 @@ def shade(bbox, place, dem, exaggeration, shading):
 @cli.command()
 @click.option("--bbox", type=str, help="Bounding box: west,south,east,north")
 @click.option("--place", type=str, help="Place name (geocoded via Nominatim)")
-@click.option("--theme", type=str, required=True, help="Theme name or path to custom theme JSON")
-@click.option("--exaggeration", type=str, default="auto", help="Vertical exaggeration (number or 'auto')")
-def style(bbox, place, theme, exaggeration):
+@click.option("--dem", type=str, default="auto", help="DEM source")
+@click.option("--theme", "theme_name", type=str, required=True, help="Theme name or path to custom theme JSON")
+@click.option("--exaggeration", type=float, default=None, help="Override theme exaggeration")
+def style(bbox, place, dem, theme_name, exaggeration):
     """Apply a theme to a cached hillshade."""
-    click.echo("Not yet implemented — see ROADMAP.md M3")
-    raise SystemExit(1)
+    resolved_bbox = _resolve_bbox(bbox, place)
+
+    from .themes import get_theme
+    from .sources import resolve_source
+    from .cache import ensure_cache_dir
+    from .pipeline.reproject import reproject_to_4326, needs_reproject
+    from .pipeline.hillshade import generate_grayscale, generate_composite, ShadingMode
+    from .pipeline.style import apply_style
+
+    theme = get_theme(theme_name)
+    if theme is None:
+        raise click.BadParameter(f"Unknown theme: {theme_name}", param_hint="--theme")
+
+    # Resolve exaggeration
+    exag = exaggeration or theme.get_exaggeration_value() or 3.0
+    cb = lambda msg: click.echo(msg)
+
+    source = resolve_source(resolved_bbox, dem)
+
+    # Ensure DEM
+    dem_dir = ensure_cache_dir("dem") / source.name
+    dem_path = source.download(resolved_bbox, dem_dir, progress_cb=cb)
+
+    # Ensure reproject
+    if needs_reproject(dem_path):
+        reproj_dir = ensure_cache_dir("reprojected")
+        reproj_path = reproj_dir / f"{dem_path.stem}_4326.tif"
+        if not reproj_path.exists():
+            reproject_to_4326(dem_path, reproj_path, progress_cb=cb)
+        else:
+            click.echo(f"Reproject cached: {reproj_path.name}")
+        input_dem = reproj_path
+    else:
+        input_dem = dem_path
+
+    # Ensure hillshade
+    hs_dir = ensure_cache_dir("hillshade")
+    if theme.shading == "composite":
+        weights = theme.composite_weights
+        w_str = "-".join(str(w) for w in weights)
+        hs_path = hs_dir / f"{input_dem.stem}_gray_composite_{w_str}_{exag}x.tif"
+        if not hs_path.exists():
+            generate_composite(
+                input_dem, hs_path, exag, weights=weights,
+                cache_dir=hs_dir, progress_cb=cb,
+            )
+        else:
+            click.echo(f"Hillshade cached: {hs_path.name}")
+    else:
+        mode_str = "multi" if theme.shading == "multidirectional" else theme.shading
+        mode = ShadingMode(mode_str)
+        hs_path = hs_dir / f"{input_dem.stem}_gray_{mode.value}_{exag}x.tif"
+        if not hs_path.exists():
+            generate_grayscale(input_dem, hs_path, exag, mode=mode, progress_cb=cb)
+        else:
+            click.echo(f"Hillshade cached: {hs_path.name}")
+
+    # Apply style
+    styled_dir = ensure_cache_dir("styled")
+    styled_path = styled_dir / f"{input_dem.stem}_{theme.name}_{exag}x.tif"
+
+    if styled_path.exists():
+        click.echo(f"Cached: {styled_path}")
+        return
+
+    # For elevation mode, pass the reprojected DEM
+    elev_dem = input_dem if theme.color_mode == "elevation" else None
+
+    apply_style(hs_path, styled_path, theme, dem_path=elev_dem, progress_cb=cb)
+    click.echo(f"\nStyled output: {styled_path}")
 
 
 @cli.command()
@@ -301,8 +370,36 @@ def run(bbox, place, theme, exaggeration, dem, zoom, output_format, output,
 @click.option("--show", type=str, help="Show details for a specific theme")
 def themes(tag, show):
     """List available themes."""
-    click.echo("Not yet implemented — see ROADMAP.md M3")
-    raise SystemExit(1)
+    from .themes import get_theme, list_themes as _list_themes
+
+    if show:
+        theme = get_theme(show)
+        if not theme:
+            click.echo(f"Unknown theme: {show}")
+            raise SystemExit(1)
+        click.echo(f"Theme: {theme.name}")
+        click.echo(f"  {theme.description}")
+        click.echo(f"  Ramp:         {theme.ramp}")
+        click.echo(f"  Color mode:   {theme.color_mode}")
+        click.echo(f"  Shading:      {theme.shading}")
+        if theme.shading == "composite":
+            click.echo(f"  Weights:      {', '.join(str(w) for w in theme.composite_weights)}")
+        click.echo(f"  Exaggeration: {theme.exaggeration}")
+        if theme.aspect_blend > 0:
+            click.echo(f"  Aspect blend: {theme.aspect_blend}")
+        click.echo(f"  Tags:         {', '.join(theme.tags)}")
+        return
+
+    all_themes = _list_themes(tag=tag)
+    if not all_themes:
+        click.echo(f"No themes found{f' with tag: {tag}' if tag else ''}")
+        return
+
+    click.echo(f"{len(all_themes)} themes{f' (tag: {tag})' if tag else ''}:\n")
+    for t in all_themes:
+        tags = ", ".join(t.tags)
+        click.echo(f"  {t.name:20s} {t.description[:60]}")
+    click.echo(f"\nUse --show <name> for details.")
 
 
 @cli.command()

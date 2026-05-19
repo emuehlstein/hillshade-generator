@@ -1,0 +1,16 @@
+# Alpine Glacier — deep indigo valleys → teal forests → steel-blue ridges → icy white summit
+# Designed for volcanic peaks with heavy elevation relief (400m–2600m range)
+0%   18  22  48 255
+8%   28  38  82 255
+18%  38  72 108 255
+28%  52 108 130 255
+38%  72 140 148 255
+48%  98 162 158 255
+56% 128 178 168 255
+64% 162 195 188 255
+72% 192 212 208 255
+80% 218 228 224 255
+88% 235 240 238 255
+94% 245 248 247 255
+100% 255 255 255 255
+nv 0 0 0 0

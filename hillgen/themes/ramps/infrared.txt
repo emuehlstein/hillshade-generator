@@ -1,0 +1,12 @@
+# Infrared — false-color like thermal imaging: black → purple → blue → cyan → green → yellow → red
+0%    5   5  10 255
+10%  30  10  80 255
+22%  20  40 160 255
+34%   0 120 180 255
+45%   0 180 160 255
+55%  20 200  80 255
+65% 160 210   0 255
+75% 230 180   0 255
+85% 240  80   0 255
+100% 220  10  10 255
+nv 0 0 0 0

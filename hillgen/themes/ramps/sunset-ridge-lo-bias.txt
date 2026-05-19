@@ -1,0 +1,14 @@
+# Sunset Ridge Lo-Bias — transitions crammed into low elevations, upper half stays warm amber/gold
+# Valley floors cycle through full violet→rose→amber spectrum fast; ridges and summit are all warm gold
+0%   22   8  38 255
+5%   55  18  72 255
+12% 110  30  80 255
+20% 170  50  70 255
+29% 210  80  60 255
+39% 230 120  55 255
+50% 238 162  60 255
+62% 242 195  85 255
+74% 246 220 130 255
+86% 250 238 180 255
+100% 255 250 220 255
+nv 0 0 0 0

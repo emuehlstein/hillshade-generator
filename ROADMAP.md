@@ -34,11 +34,15 @@ Development plan for hillgen MVP. Each milestone produces something testable aga
 - **Result:** 4 hillshade files (multi 1.7MB, igor 1.6MB, combined 1.7MB, composite 1.7MB)
 
 ### M3: Themes + Style
-- [ ] Copy 25+ ramp `.txt` files from ilhmp
-- [ ] Port `Theme` dataclass + registry
-- [ ] `hillgen themes` — list all, `hillgen themes --show midnight`
-- [ ] `hillgen style --bbox ... --theme midnight --exaggeration 9`
-- **Test:** styled RGBA raster — visual compare against ilhmp output
+- [x] Copy 26 ramp `.txt` files from ilhmp
+- [x] Port `Theme` dataclass + registry (22 built-in themes)
+- [x] `hillgen themes` — list all, `hillgen themes --show midnight`
+- [x] `hillgen style --bbox ... --theme midnight --exaggeration 3`
+- [x] Ramp mode (color-relief on hillshade values) — midnight, daylight, tactical, etc.
+- [x] Elevation mode (color-relief on DEM, modulated by hillshade) — alpine-glacier, magma, etc.
+- [x] Custom theme JSON loading via file path
+- [x] Sub-layer cache reuse across themes with different composite weights
+- **Test:** midnight + alpine-glacier opened for visual verification ⬅️
 
 ### M4: Tile + Package
 - [ ] `hillgen tile` — gdal2tiles, XYZ coordinates (not TMS)
@@ -87,7 +91,7 @@ Development plan for hillgen MVP. Each milestone produces something testable aga
 | M0 | ✅ | 2026-05-18 | 2026-05-18 | Skeleton + all subcommand stubs |
 | M1 | ✅ | 2026-05-18 | 2026-05-18 | USGS 3DEP 10m, tile caching, bbox clipping |
 | M2 | ✅ | 2026-05-18 | 2026-05-18 | Reproject (NAD83→4326) + composite shading |
-| M3 | | | | |
+| M3 | ✅ | 2026-05-18 | 2026-05-18 | 22 themes, ramp + elevation color modes |
 | M4 | | | | |
 | M5 | | | | |
 | M6 | | | | |

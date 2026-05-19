@@ -1,0 +1,13 @@
+# Infrared Mid-Bias — transitions bunched in the middle band (~40-75% elevation)
+# Valleys dark, summit red, all the color action in the forest/flank zone
+0%    5   5  10 255
+15%  30  10  80 255
+28%  20  40 160 255
+38%   0 120 180 255
+46%   0 180 160 255
+54%  20 200  80 255
+62% 160 210   0 255
+70% 230 180   0 255
+80% 240  80   0 255
+100% 220  10  10 255
+nv 0 0 0 0

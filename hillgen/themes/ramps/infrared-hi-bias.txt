@@ -1,0 +1,13 @@
+# Infrared Hi-Bias — valleys stay dark/purple long, transitions compressed near summit
+# Most of the terrain is dark blue/purple; color explosion happens on upper flanks and peak
+0%    5   5  10 255
+20%  30  10  80 255
+35%  20  40 160 255
+48%   0 120 180 255
+58%   0 180 160 255
+68%  20 200  80 255
+76% 160 210   0 255
+84% 230 180   0 255
+92% 240  80   0 255
+100% 220  10  10 255
+nv 0 0 0 0

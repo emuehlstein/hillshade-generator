@@ -1,0 +1,14 @@
+# Infrared Crater-Focus — valleys/flanks all dark; full spectrum compressed into top 30% (crater zone)
+# Below ~70% elevation: black → deep blue. Above 70%: rapid color cycle up to red summit
+0%    5   5  10 255
+25%  15   8  45 255
+45%  20  25 100 255
+60%  15  70 140 255
+70%   0 120 180 255
+78%   0 180 160 255
+84%  20 200  80 255
+89% 160 210   0 255
+94% 230 180   0 255
+97% 240  80   0 255
+100% 220  10  10 255
+nv 0 0 0 0
