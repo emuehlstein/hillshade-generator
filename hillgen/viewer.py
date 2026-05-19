@@ -20,10 +20,23 @@ _VIEWER_HTML = """<!DOCTYPE html>
 <style>
   body { margin: 0; padding: 0; }
   #map { width: 100vw; height: 100vh; background: #111; }
+  #zoom-indicator {
+    position: fixed;
+    top: 10px;
+    right: 10px;
+    background: rgba(0,0,0,0.7);
+    color: #fff;
+    padding: 6px 12px;
+    border-radius: 4px;
+    font: 14px/1 monospace;
+    z-index: 1000;
+    pointer-events: none;
+  }
 </style>
 </head>
 <body>
 <div id="map"></div>
+<div id="zoom-indicator">z0</div>
 <script>
   const map = L.map('map').setView([__CENTER_LAT__, __CENTER_LON__], __ZOOM__);
 
@@ -39,6 +52,12 @@ _VIEWER_HTML = """<!DOCTYPE html>
     opacity: 1.0,
     tms: false,
   }).addTo(map);
+
+  // Zoom indicator
+  const zoomEl = document.getElementById('zoom-indicator');
+  function updateZoom() { zoomEl.textContent = 'z' + map.getZoom(); }
+  map.on('zoomend', updateZoom);
+  updateZoom();
 </script>
 </body>
 </html>"""
