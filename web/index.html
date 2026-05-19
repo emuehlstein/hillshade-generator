@@ -48,7 +48,7 @@ a:hover { color: var(--accent-hover); }
 .hero-bg {
   position: absolute;
   inset: 0;
-  background: url('previews/mauna-kea/alpine-glacier.png') center/cover;
+  background: url('previews/alpine-glacier.png') center/cover;
   filter: brightness(0.4);
   z-index: 0;
 }
@@ -297,9 +297,9 @@ footer a:hover { color: var(--accent); }
   <div style="display:flex; align-items:center; gap:16px; margin-bottom:12px; flex-wrap:wrap">
     <p class="subtitle" style="margin-bottom:0">Every theme applied to</p>
     <select id="geo-select" onchange="switchGeography(this.value)">
-      <option value="mauna-kea">Mauna Kea, Hawaii</option>
-      <option value="mt-rainier">Mt. Rainier, WA</option>
       <option value="st-helens">Mt. St. Helens, WA</option>
+      <option value="mt-rainier">Mt. Rainier, WA</option>
+      <option value="mauna-kea">Mauna Kea, Hawaii</option>
     </select>
   </div>
   <div class="theme-grid" id="theme-grid"></div>
@@ -380,7 +380,7 @@ const GEOGRAPHIES = {
   },
 };
 
-let currentGeo = 'mauna-kea';
+let currentGeo = 'st-helens';
 
 let catalog = null;
 let map = null;
