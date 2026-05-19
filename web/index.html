@@ -304,13 +304,21 @@ footer a:hover { color: var(--accent); }
 <section id="generate">
   <div class="cta-section">
     <h2>Generate Your Own</h2>
-    <p>One command. Any place on Earth. 22 themes included.</p>
+    <p>One command installs everything. Works on Mac and Linux.</p>
     <div class="code-block">
-      <button class="copy-btn" onclick="copyCode()">Copy</button>
-      pip install hillgen<br><br>
-      hillgen run --place "Crater Lake" --theme midnight
+      <button class="copy-btn" onclick="copyInstall()">Copy</button>
+      <span style="color:#888"># Install hillgen + all dependencies</span><br>
+      curl -fsSL https://raw.githubusercontent.com/emuehlstein/hillshade-generator/main/install.sh | bash
     </div>
-    <a href="https://github.com/emuehlstein/hillshade-generator" class="btn btn-primary">View on GitHub</a>
+    <p style="margin-top:24px">Then generate a hillshade:</p>
+    <div class="code-block">
+      <button class="copy-btn" onclick="copyRun()">Copy</button>
+      hillgen run --place "Crater Lake" --theme alpine-glacier --zoom 10-14
+    </div>
+    <div style="display:flex; gap:12px; justify-content:center; flex-wrap:wrap; margin-top:24px">
+      <a href="https://github.com/emuehlstein/hillshade-generator" class="btn btn-primary">View on GitHub</a>
+      <a href="https://github.com/emuehlstein/hillshade-generator/blob/main/README.md" class="btn btn-secondary">Documentation</a>
+    </div>
   </div>
 </section>
 
@@ -443,12 +451,18 @@ function scrollToMap(themeName) {
   document.getElementById('map-section').scrollIntoView({ behavior: 'smooth' });
 }
 
-function copyCode() {
-  const text = 'pip install hillgen && hillgen run --place "Crater Lake" --theme midnight';
+function copyInstall() {
+  const text = 'curl -fsSL https://raw.githubusercontent.com/emuehlstein/hillshade-generator/main/install.sh | bash';
   navigator.clipboard.writeText(text);
-  const btn = document.querySelector('.copy-btn');
-  btn.textContent = 'Copied!';
-  setTimeout(() => btn.textContent = 'Copy', 2000);
+  event.target.textContent = 'Copied!';
+  setTimeout(() => event.target.textContent = 'Copy', 2000);
+}
+
+function copyRun() {
+  const text = 'hillgen run --place "Crater Lake" --theme alpine-glacier --zoom 10-14';
+  navigator.clipboard.writeText(text);
+  event.target.textContent = 'Copied!';
+  setTimeout(() => event.target.textContent = 'Copy', 2000);
 }
 
 init();

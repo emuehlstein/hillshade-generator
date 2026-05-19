@@ -53,22 +53,42 @@ else
     SHELL_RC="$HOME/.profile"
 fi
 
-# ── Check: Homebrew (macOS only) ─────────────────────────────
+# ── Check & install: Homebrew (macOS only) ───────────────────
 
 if [[ "$OS" == "Darwin" ]]; then
     if command -v brew &>/dev/null; then
         ok "Homebrew found"
     else
-        fail "Homebrew not found"
-        echo ""
-        echo "  Install it first:"
-        echo -e "  ${BOLD}/bin/bash -c \"\$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)\"${NC}"
-        echo ""
-        exit 1
+        info "Installing Homebrew..."
+        /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+        if [[ -f /opt/homebrew/bin/brew ]]; then
+            eval "$(/opt/homebrew/bin/brew shellenv)"
+        elif [[ -f /usr/local/bin/brew ]]; then
+            eval "$(/usr/local/bin/brew shellenv)"
+        fi
+        ok "Homebrew installed"
     fi
 fi
 
-# ── Check: Python 3.10+ ─────────────────────────────────────
+# ── Check & install: git ────────────────────────────────────
+
+if command -v git &>/dev/null; then
+    ok "git found"
+else
+    if [[ "$OS" == "Darwin" ]]; then
+        info "Installing Xcode command line tools (includes git)..."
+        xcode-select --install 2>/dev/null || true
+        echo "  Waiting for Xcode tools install to complete..."
+        until command -v git &>/dev/null; do sleep 5; done
+        ok "git installed"
+    else
+        info "Installing git..."
+        sudo apt-get update -qq && sudo apt-get install -y -qq git
+        ok "git installed"
+    fi
+fi
+
+# ── Check & install: Python 3.10+ ───────────────────────────
 
 PYTHON=""
 for cmd in python3 python; do
@@ -86,48 +106,53 @@ done
 if [[ -n "$PYTHON" ]]; then
     ok "Python $ver ($PYTHON)"
 else
-    fail "Python 3.10+ not found"
-    echo ""
+    info "Installing Python 3..."
     if [[ "$OS" == "Darwin" ]]; then
-        echo -e "  Install: ${BOLD}brew install python3${NC}"
+        brew install python3
     else
-        echo -e "  Install: ${BOLD}sudo apt install python3 python3-venv${NC}"
+        sudo apt-get update -qq && sudo apt-get install -y -qq python3 python3-venv
     fi
-    echo ""
-    exit 1
+    PYTHON="python3"
+    ver=$("$PYTHON" -c "import sys; print(f'{sys.version_info.major}.{sys.version_info.minor}')")
+    ok "Python $ver installed"
 fi
 
-# ── Check: GDAL ─────────────────────────────────────────────
+# ── Check & install: GDAL ───────────────────────────────────
 
 if command -v gdalinfo &>/dev/null; then
     gdal_ver=$(gdalinfo --version 2>/dev/null | head -1 | sed 's/GDAL //' | cut -d, -f1)
     ok "GDAL $gdal_ver"
 else
-    fail "GDAL not found"
-    echo ""
+    info "Installing GDAL (this may take a few minutes)..."
     if [[ "$OS" == "Darwin" ]]; then
-        echo -e "  Install: ${BOLD}brew install gdal${NC}"
+        brew install gdal
     else
-        echo -e "  Install: ${BOLD}sudo apt install gdal-bin python3-gdal${NC}"
+        sudo apt-get update -qq && sudo apt-get install -y -qq gdal-bin python3-gdal
     fi
-    echo ""
-    exit 1
+    gdal_ver=$(gdalinfo --version 2>/dev/null | head -1 | sed 's/GDAL //' | cut -d, -f1)
+    ok "GDAL $gdal_ver installed"
 fi
 
-# ── Check: git ───────────────────────────────────────────────
+# ── Check & install: pmtiles CLI ────────────────────────────
 
-if command -v git &>/dev/null; then
-    ok "git found"
+if command -v pmtiles &>/dev/null; then
+    ok "pmtiles CLI found"
 else
-    fail "git not found"
-    echo ""
+    info "Installing pmtiles CLI..."
     if [[ "$OS" == "Darwin" ]]; then
-        echo -e "  Install: ${BOLD}xcode-select --install${NC}"
+        brew install pmtiles
     else
-        echo -e "  Install: ${BOLD}sudo apt install git${NC}"
+        # Try go install if go is available, otherwise skip
+        if command -v go &>/dev/null; then
+            go install github.com/protomaps/go-pmtiles/cmd/pmtiles@latest
+        else
+            warn "pmtiles CLI not installed (go not found). PMTiles output will be unavailable."
+            warn "  Install Go, then: go install github.com/protomaps/go-pmtiles/cmd/pmtiles@latest"
+        fi
     fi
-    echo ""
-    exit 1
+    if command -v pmtiles &>/dev/null; then
+        ok "pmtiles CLI installed"
+    fi
 fi
 
 # ── Clone or update ──────────────────────────────────────────
@@ -166,26 +191,11 @@ fi
 
 ok "hillgen installed"
 
-# ── Check: pmtiles CLI (optional) ────────────────────────────
-
-if command -v pmtiles &>/dev/null; then
-    ok "pmtiles CLI found"
-else
-    warn "pmtiles CLI not found (optional — needed for PMTiles output)"
-    if [[ "$OS" == "Darwin" ]]; then
-        echo -e "    Install: ${BOLD}brew install pmtiles${NC}"
-    else
-        echo -e "    Install: ${BOLD}go install github.com/protomaps/go-pmtiles/cmd/pmtiles@latest${NC}"
-    fi
-fi
-
 # ── Add to PATH ──────────────────────────────────────────────
 
 BIN_DIR="$VENV_DIR/bin"
-ALIAS_LINE="alias hillgen='$BIN_DIR/hillgen'"
 PATH_LINE="export PATH=\"$BIN_DIR:\$PATH\""
 
-# Check if already in shell config
 if grep -qF "hillshade-generator" "$SHELL_RC" 2>/dev/null; then
     ok "Shell config already set up"
 else
