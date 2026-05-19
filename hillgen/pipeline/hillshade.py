@@ -148,25 +148,33 @@ def generate_composite(
 
         layer_paths.append((sub_path, weight))
 
-    # Blend using numpy
+    # Blend using chunked windowed reads to avoid loading full arrays into RAM
     if progress_cb:
-        progress_cb("Blending sub-layers...")
+        progress_cb("Blending sub-layers (chunked)...")
+
+    CHUNK_ROWS = 512  # process 512 rows at a time (~200 MB peak for 80k-wide raster)
 
     with rasterio.open(layer_paths[0][0]) as src:
         profile = src.profile.copy()
-        profile.update(dtype="uint8", compress="lzw")
-        blended = np.zeros(src.shape, dtype=np.float64)
+        profile.update(dtype="uint8", compress="lzw", tiled=True,
+                       blockxsize=512, blockysize=512)
+        height, width = src.shape
 
-        for path, weight in layer_paths:
-            with rasterio.open(path) as layer_src:
-                data = layer_src.read(1).astype(np.float64)
-                blended += data * weight
+        with rasterio.open(output_path, "w", **profile) as dst:
+            for row_off in range(0, height, CHUNK_ROWS):
+                chunk_h = min(CHUNK_ROWS, height - row_off)
+                window = rasterio.windows.Window(0, row_off, width, chunk_h)
+                blended = np.zeros((chunk_h, width), dtype=np.float64)
 
-    # Clip to 0-255 and write
-    blended = np.clip(blended, 0, 255).astype(np.uint8)
+                for path, weight in layer_paths:
+                    with rasterio.open(path) as layer_src:
+                        data = layer_src.read(1, window=window).astype(np.float64)
+                        blended += data * weight
 
-    with rasterio.open(output_path, "w", **profile) as dst:
-        dst.write(blended, 1)
+                chunk_out = np.clip(blended, 0, 255).astype(np.uint8)
+                dst.write(chunk_out, 1, window=window)
+
+        del blended  # explicit cleanup
 
     if progress_cb:
         size_mb = output_path.stat().st_size / (1024 * 1024)
