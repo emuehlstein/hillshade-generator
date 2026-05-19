@@ -226,6 +226,47 @@ section .subtitle {
 }
 #geo-select:hover { background: var(--accent-hover); }
 
+/* Geography Gallery */
+.geo-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 20px;
+}
+.geo-card {
+  background: var(--surface);
+  border-radius: var(--radius);
+  overflow: hidden;
+  cursor: pointer;
+  transition: transform 0.2s, box-shadow 0.2s;
+  border: 2px solid transparent;
+}
+.geo-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 12px 40px rgba(0,0,0,0.4);
+}
+.geo-card.active {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px rgba(91,141,239,0.25);
+}
+.geo-card img {
+  width: 100%;
+  aspect-ratio: 16/10;
+  object-fit: cover;
+  display: block;
+}
+.geo-card-body {
+  padding: 14px 16px;
+}
+.geo-card-body h3 {
+  font-size: 1rem;
+  font-weight: 600;
+  margin-bottom: 2px;
+}
+.geo-card-body p {
+  font-size: 0.8rem;
+  color: var(--text-dim);
+}
+
 /* CTA section */
 .cta-section {
   background: var(--surface);
@@ -285,7 +326,7 @@ footer a:hover { color: var(--accent); }
     <h1>Scripted Relief</h1>
     <p>Beautiful terrain maps from real-world elevation data. Free to use.</p>
     <div style="margin-bottom:24px">
-      <select id="hero-geo-select" onchange="switchGeography(this.value); document.getElementById('geo-select').value=this.value;" style="padding:10px 20px; border-radius:8px; background:rgba(255,255,255,0.15); color:#fff; border:1px solid rgba(255,255,255,0.3); font-size:1rem; backdrop-filter:blur(4px); cursor:pointer; -webkit-appearance:none; appearance:none;">
+      <select id="hero-geo-select" onchange="selectGeography(this.value)" style="padding:10px 20px; border-radius:8px; background:rgba(255,255,255,0.15); color:#fff; border:1px solid rgba(255,255,255,0.3); font-size:1rem; backdrop-filter:blur(4px); cursor:pointer; -webkit-appearance:none; appearance:none;">
         <option value="st-helens" style="color:#000">Mt. St. Helens, WA</option>
         <option value="mt-rainier" style="color:#000">Mt. Rainier, WA</option>
         <option value="mauna-kea" style="color:#000">Mauna Kea, Hawaii</option>
@@ -298,17 +339,17 @@ footer a:hover { color: var(--accent); }
   </div>
 </div>
 
+<!-- Geography Picker -->
+<section id="geography">
+  <h2>Geography</h2>
+  <p class="subtitle">Choose a location — themes and the map viewer will update to match.</p>
+  <div class="geo-grid" id="geo-grid"></div>
+</section>
+
 <!-- Theme Gallery -->
 <section id="themes">
   <h2>Themes</h2>
-  <div style="display:flex; align-items:center; gap:16px; margin-bottom:12px; flex-wrap:wrap">
-    <p class="subtitle" style="margin-bottom:0">Every theme applied to</p>
-    <select id="geo-select" onchange="switchGeography(this.value); document.getElementById('hero-geo-select').value=this.value;">
-      <option value="st-helens">Mt. St. Helens, WA</option>
-      <option value="mt-rainier">Mt. Rainier, WA</option>
-      <option value="mauna-kea">Mauna Kea, Hawaii</option>
-    </select>
-  </div>
+  <p class="subtitle" id="themes-subtitle">Every theme applied to Mt. St. Helens, WA</p>
   <div class="theme-grid" id="theme-grid"></div>
 </section>
 
@@ -360,30 +401,38 @@ footer a:hover { color: var(--accent); }
 const PMTILES_BASE = '';
 const PREVIEW_THEMES = ['alpine-glacier','midnight','daylight','magma','vivid','desert-sun','aurora','infrared','cool','tactical','simmon','vivid-elevation','cool-elevation','volcanic-ash','forest-canopy','ocean-depth','toxic','sunset-ridge','topo-classic','grayscale','flat-terrain'];
 
+const GEO_ORDER = ['st-helens', 'mt-rainier', 'mauna-kea'];
+
 const GEOGRAPHIES = {
   'mauna-kea': {
     name: 'Mauna Kea, Hawaii',
+    location: 'Big Island, Hawaii',
     center: [19.82, -155.47],
     bounds: [[19.67, -155.62], [19.97, -155.32]],
     previewDir: 'previews/mauna-kea',
     pmtilesPrefix: 'tiles/mauna-kea/3dep_n19.82_w155.47_4326',
     heroPreview: 'previews/mauna-kea/alpine-glacier.png',
+    cardPreview: 'previews/mauna-kea/alpine-glacier.png',
   },
   'mt-rainier': {
     name: 'Mt. Rainier, WA',
+    location: 'Cascade Range, Washington',
     center: [46.85, -121.76],
     bounds: [[46.70, -121.91], [47.00, -121.61]],
     previewDir: 'previews/mt-rainier',
     pmtilesPrefix: 'tiles/mt-rainier/3dep_n46.85_w121.76_4326',
     heroPreview: 'previews/mt-rainier/alpine-glacier.png',
+    cardPreview: 'previews/mt-rainier/alpine-glacier.png',
   },
   'st-helens': {
     name: 'Mt. St. Helens, WA',
+    location: 'Cascade Range, Washington',
     center: [46.2, -122.175],
     bounds: [[46.15, -122.25], [46.25, -122.10]],
     previewDir: 'previews',
     pmtilesPrefix: 'tiles/3dep_n46.20_w122.17_4326',
     heroPreview: 'previews/alpine-glacier.png',
+    cardPreview: 'previews/alpine-glacier.png',
   },
 };
 
@@ -400,8 +449,40 @@ async function init() {
   } catch(e) {
     catalog = { layers: [], themes: [] };
   }
+  buildGeoGrid();
   buildThemeGrid();
   initMap();
+}
+
+function buildGeoGrid() {
+  const grid = document.getElementById('geo-grid');
+  GEO_ORDER.forEach(key => {
+    const geo = GEOGRAPHIES[key];
+    const card = document.createElement('div');
+    card.className = 'geo-card' + (key === currentGeo ? ' active' : '');
+    card.id = 'geo-card-' + key;
+    card.onclick = () => selectGeography(key);
+    card.innerHTML = `
+      <img src="${geo.cardPreview}" alt="${geo.name}" loading="lazy">
+      <div class="geo-card-body">
+        <h3>${geo.name}</h3>
+        <p>${geo.location}</p>
+      </div>
+    `;
+    grid.appendChild(card);
+  });
+}
+
+function selectGeography(geoKey) {
+  // Update active state on cards
+  GEO_ORDER.forEach(k => {
+    const card = document.getElementById('geo-card-' + k);
+    if (card) card.classList.toggle('active', k === geoKey);
+  });
+  // Keep hero dropdowns in sync
+  const heroSel = document.getElementById('hero-geo-select');
+  if (heroSel) heroSel.value = geoKey;
+  switchGeography(geoKey);
 }
 
 function buildThemeGrid() {
@@ -467,6 +548,10 @@ function initMap() {
 function switchGeography(geoKey) {
   currentGeo = geoKey;
   const geo = GEOGRAPHIES[geoKey];
+
+  // Update Themes subtitle
+  const sub = document.getElementById('themes-subtitle');
+  if (sub) sub.textContent = 'Every theme applied to ' + geo.name;
 
   // Update hero background
   document.querySelector('.hero-bg').style.backgroundImage = `url('${geo.heroPreview}')`;
