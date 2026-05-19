@@ -26,20 +26,29 @@ hillgen run --bbox "-121.85,46.72,-121.65,46.92" \
 ### Install
 
 ```bash
-# Requires Python 3.10+ and GDAL
-pip install hillgen
+# Prerequisites (macOS)
+brew install gdal python3
 
-# Or from source
+# Clone and install in a virtual environment
 git clone https://github.com/emuehlstein/hillshade-generator.git
 cd hillshade-generator
+python3 -m venv .venv
+source .venv/bin/activate
 pip install -e .
+
+# Verify
+hillgen version
 ```
+
+> **Note:** hillgen is not yet on PyPI. Install from source for now.
+> Each new terminal session needs `source .venv/bin/activate` (or add it to your shell profile).
 
 ### Dependencies
 
 - **Python 3.10+**
-- **GDAL 3.6+** with Python bindings (`brew install gdal` / `apt install gdal-bin python3-gdal`)
-- **pmtiles** CLI (optional, for PMTiles conversion): `pip install pmtiles`
+- **GDAL 3.6+** (`brew install gdal` on macOS / `apt install gdal-bin python3-gdal` on Linux)
+- **mb-util** (for MBTiles packaging): `pip install mbutil` (installed automatically in the venv)
+- **pmtiles** CLI (optional, for PMTiles conversion): `brew install pmtiles` or `go install github.com/protomaps/go-pmtiles/cmd/pmtiles@latest`
 
 ### Generate Your First Hillshade
 
