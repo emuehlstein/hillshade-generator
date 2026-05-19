@@ -613,7 +613,42 @@ def run(bbox, place, theme, exaggeration, dem, zoom, output_format, output,
         if "mbtiles" not in formats and mbtiles_path.exists():
             mbtiles_path.unlink()
 
+    # Contribute intermediates to S3 if requested
+    if contribute:
+        from .cache_s3 import push as s3_push, exists as s3_exists
+        from .cache import get_cache_dir
+        cache_dir = get_cache_dir()
+        click.echo("\nContributing intermediates to shared cache...")
+        contributed = 0
+        for stage in ["reprojected", "hillshade", "styled"]:
+            stage_dir = cache_dir / stage
+            if not stage_dir.exists():
+                continue
+            for f in stage_dir.rglob("*.tif"):
+                if not s3_exists(stage, f.name):
+                    click.echo(f"  Uploading {stage}/{f.name}...")
+                    if s3_push(f, stage, f.name):
+                        contributed += 1
+                        click.echo(f"    ✓ uploaded")
+                    else:
+                        click.echo(f"    ✗ failed (check AWS credentials)")
+                else:
+                    click.echo(f"  {stage}/{f.name}: already in cache")
+        if contributed:
+            click.echo(f"Contributed {contributed} file(s) to s3://scriptedrelief-data/cache/")
+        else:
+            click.echo("All intermediates already in shared cache.")
+
+    # Output summary
     click.echo(f"\nDone! Output: {out_dir}")
+    out_files = sorted(out_dir.glob(f"{base_name}.*"))
+    for f in out_files:
+        size_mb = f.stat().st_size / (1024 * 1024)
+        click.echo(f"  {f.name} ({size_mb:.1f} MB)")
+    click.echo(f"\nTo view locally:")
+    tiles_dir_name = f"{styled_path.stem}_z{zoom}"
+    tiles_path = get_cache_dir() / "tiles" / tiles_dir_name
+    click.echo(f"  hillgen view {tiles_path}")
 
 
 @cli.command()
