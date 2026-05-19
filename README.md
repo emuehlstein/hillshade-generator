@@ -25,23 +25,26 @@ hillgen run --bbox "-121.85,46.72,-121.65,46.92" \
 
 ### Install
 
+**One-liner (macOS/Linux):**
+```bash
+curl -fsSL https://raw.githubusercontent.com/emuehlstein/hillshade-generator/main/install.sh | bash
+```
+
+This checks for prerequisites (Python 3.10+, GDAL, git), clones the repo, creates a venv, installs hillgen, and adds it to your PATH. If anything is missing, it tells you exactly what to install.
+
+**Manual install:**
 ```bash
 # Prerequisites (macOS)
 brew install gdal python3
 
-# Clone and install in a virtual environment
+# Clone and install
 git clone https://github.com/emuehlstein/hillshade-generator.git
 cd hillshade-generator
 python3 -m venv .venv
 source .venv/bin/activate
 pip install -e .
-
-# Verify
 hillgen version
 ```
-
-> **Note:** hillgen is not yet on PyPI. Install from source for now.
-> Each new terminal session needs `source .venv/bin/activate` (or add it to your shell profile).
 
 ### Dependencies
 
