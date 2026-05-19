@@ -7,9 +7,9 @@ Development plan for hillgen MVP. Each milestone produces something testable aga
 ## Milestones
 
 ### M0: Skeleton
-- [ ] `pyproject.toml` with dependencies, entry point, metadata
-- [ ] `hillgen/cli.py` — Click group with `version` subcommand
-- [ ] `hillgen version` prints version + GDAL info
+- [x] `pyproject.toml` with dependencies, entry point, metadata
+- [x] `hillgen/cli.py` — Click group with `version` subcommand
+- [x] `hillgen version` prints version + GDAL info
 - **Test:** `pip install -e . && hillgen version`
 
 ### M1: Fetch
@@ -79,7 +79,7 @@ Development plan for hillgen MVP. Each milestone produces something testable aga
 
 | Milestone | Status | Started | Completed | Notes |
 |-----------|--------|---------|-----------|-------|
-| M0 | 🔜 | | | |
+| M0 | ✅ | 2026-05-18 | 2026-05-18 | Skeleton + all subcommand stubs |
 | M1 | | | | |
 | M2 | | | | |
 | M3 | | | | |
