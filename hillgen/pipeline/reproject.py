@@ -13,7 +13,7 @@ def native_resolution_deg(input_path: Path) -> tuple[float, float] | None:
     gdalwarp -tr can lock the output at the same ground sample distance.
     """
     result = subprocess.run(
-        ["gdalinfo", "-json", str(input_path)],
+        ["gdalinfo", "-json", "-nomd", "-norat", "-noct", str(input_path)],
         capture_output=True, text=True, timeout=120,
     )
     if result.returncode != 0:
