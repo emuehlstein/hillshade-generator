@@ -93,6 +93,60 @@ Development plan for hillgen MVP. Each milestone produces something testable aga
 - [ ] CloudFront distribution for scriptedrelief.com
 - **Verified:** `https://scriptedrelief.s3.us-east-2.amazonaws.com/tiles/...` returns 200
 
+---
+
+## Website (scriptedrelief.com)
+
+**Audience:**
+1. **Developer** — found the repo, wants to see output quality
+2. **Theme shopper** — picking a theme before generating via CLI
+3. **Area browser** — looking for a specific region already in the library
+4. **Designer/creative** — wants a beautiful hillshade for a UI, poster, data viz, or map project. Non-technical. May be a human or an AI agent fetching assets.
+
+**Stack:** Pure static HTML/CSS/JS. Leaflet + pmtiles.js. Deployed to S3, served via CloudFront.
+
+### Pages
+
+#### W1: Landing / Hero
+- [ ] Full-bleed hillshade render (dramatic area, e.g. St Helens)
+- [ ] Tagline: "Beautiful terrain maps. Free to use."
+- [ ] Two CTAs: "Browse Library" / "Generate Your Own"
+- [ ] OG/meta tags for link previews
+
+#### W2: Library Browser
+- [ ] Grid of areas, each with hero render in default theme
+- [ ] Click area → detail page with all themes as gallery
+- [ ] Each theme card: preview image, name, one-line description, download button
+- [ ] Downloads: PMTiles (devs), MBTiles (offline), PNG preview (designers)
+- [ ] Resolution picker for PNG exports (1080p, 4K)
+- [ ] Copyable embed/tile URLs
+- [ ] Populated from `catalog.json`
+
+#### W3: Theme Showcase
+- [ ] Same area rendered in every theme, side by side
+- [ ] Big visual comparison grid
+- [ ] "Use this theme" → download link or CLI command
+
+#### W4: Map Viewer
+- [ ] Interactive Leaflet, PMTiles overlay, dark basemap
+- [ ] Pan/zoom to explore
+- [ ] Layer switcher from catalog.json
+- [ ] Zoom level indicator
+
+#### W5: Generate Your Own
+- [ ] Quickstart, install instructions
+- [ ] One-liner copy-paste
+- [ ] "Build your command" form (pick area + theme → CLI string)
+- [ ] Links to GitHub repo
+
+#### Cross-cutting
+- [ ] License clarity: "free to use, public domain source data, credit appreciated"
+- [ ] Clean `catalog.json` with direct download URLs for AI agent access
+- [ ] Predictable URL patterns: `scriptedrelief.com/tiles/{area}-{theme}.pmtiles`
+- [ ] No jargon for designers — "Dark Blue" not "MBTiles z10-16 EPSG:4326"
+
+---
+
 ## Status
 
 | Milestone | Status | Started | Completed | Notes |
