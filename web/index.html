@@ -634,19 +634,29 @@ async function init() {
 }
 
 function enterExploreMode() {
-  // Hide all sections except map
-  document.querySelectorAll('section:not(#map-section), .hero, footer').forEach(el => el.style.display = 'none');
-  document.body.style.background = 'var(--bg)';
-  document.body.style.overflow = 'hidden';
-  // Make map fill the viewport
+  // Trigger native fullscreen on the map container
   const container = document.getElementById('map-container');
-  const mapEl = document.getElementById('map');
-  container.style.cssText = 'position:fixed;inset:0;max-width:100%;margin:0;display:flex;flex-direction:column;z-index:9999;';
-  mapEl.style.cssText = 'width:100%;flex:1;height:auto;border-radius:0;';
-  document.getElementById('map-controls').style.cssText = 'padding:8px 14px;background:#111;border-radius:0;margin-top:0;';
-  document.getElementById('map-infobar').style.borderRadius = '0';
-  // Resize map to fill
-  setTimeout(() => map && map.invalidateSize(), 100);
+  const req = container.requestFullscreen || container.webkitRequestFullscreen || container.mozRequestFullScreen;
+  if (req) {
+    req.call(container).catch(() => {});
+  }
+  // Listen for fullscreen exit — restore the page to normal
+  const onFsChange = () => {
+    const isFs = !!(document.fullscreenElement || document.webkitFullscreenElement);
+    if (!isFs) {
+      document.removeEventListener('fullscreenchange', onFsChange);
+      document.removeEventListener('webkitfullscreenchange', onFsChange);
+      // Remove ?view=explore from URL so back/refresh shows homepage
+      const url = new URL(location.href);
+      url.searchParams.delete('view');
+      history.replaceState({}, '', url.toString());
+      // Resize map back
+      setTimeout(() => map && map.invalidateSize(), 100);
+    }
+  };
+  document.addEventListener('fullscreenchange', onFsChange);
+  document.addEventListener('webkitfullscreenchange', onFsChange);
+  setTimeout(() => map && map.invalidateSize(), 300);
 }
 
 function buildGeoGrid() {
@@ -1140,6 +1150,12 @@ function _syncFsIcon() {
   document.getElementById('fs-icon-compress').style.display = isFs ? '' : 'none';
   const btn = document.getElementById('fullscreen-btn');
   btn.lastChild.textContent = isFs ? ' Exit' : ' Fullscreen';
+  // Clean ?view=explore from URL on exit
+  if (!isFs && new URLSearchParams(location.search).get('view') === 'explore') {
+    const url = new URL(location.href);
+    url.searchParams.delete('view');
+    history.replaceState({}, '', url.toString());
+  }
   // Invalidate map size after transition
   if (window._srMap) setTimeout(() => window._srMap.invalidateSize(), 200);
 }
