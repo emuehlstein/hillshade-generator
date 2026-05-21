@@ -222,14 +222,30 @@ We welcome community themes! See [CONTRIBUTING.md](CONTRIBUTING.md) for the subm
 
 Hillgen auto-selects the best available DEM source for your area, or you can specify one explicitly.
 
-| Source | Resolution | Coverage | Auto-Download |
-|--------|-----------|----------|---------------|
-| **USGS 3DEP 1/3 arc-sec** | ~10m | CONUS | ✅ |
-| **USGS 3DEP 1m** | 1m | Partial US (LiDAR) | ✅ |
-| **Copernicus DEM** | 30m | Global | ✅ |
-| **SRTM** | 30m/90m | ±60° latitude | ✅ |
-| **State LiDAR** | 1ft–1m | Varies by state | 🔧 Catalog-based |
-| **Local file** | Any | Any | N/A |
+| Source | ID | Resolution | Coverage | Auto-select |
+|--------|----|-----------|----------|-------------|
+| **NPS SfM Rainier 2021** | `nps-sfm-rainier-2021` | 0.67m | Mt. Rainier NP | ✅ |
+| **Wisconsin DNR LiDAR** | `wi-dnr-lidar` | 1m | Wisconsin | ✅ |
+| **USGS 3DEP 1/3 arc-sec** | `usgs-3dep-10m` | ~10m | CONUS | ✅ |
+| **Local file** | (path) | Any | Any | — |
+
+### Wisconsin DNR LiDAR (`wi-dnr-lidar`)
+
+High-resolution 1m LiDAR-derived DEM from the Wisconsin DNR ArcGIS ImageServer.
+Auto-selected for any bbox fully within Wisconsin.
+
+- **Coverage:** Wisconsin only
+- **Resolution:** 1m native (EPSG:3071), resampled to requested zoom
+- **Units:** Meters, NAVD88
+- **Source:** <https://dnrmaps.wi.gov/arcgis_image/rest/services/DW_Elevation/EN_DEM_from_LiDAR/ImageServer>
+
+```bash
+# Auto-selected when your area is in Wisconsin
+hillgen run --place "Kettle Moraine Southern Unit" --theme simmon --zoom 10-18
+
+# Or request explicitly
+hillgen run --place "Kettle Moraine Southern Unit" --dem wi-dnr-lidar --theme simmon --zoom 10-18
+```
 
 ```bash
 # Auto-select (picks best available resolution)

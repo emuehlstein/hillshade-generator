@@ -3,12 +3,14 @@
 from .base import DEMSource, BBox
 from .usgs_3dep import USGS3DEP10m
 from .nps_sfm_rainier import NPSSfMRainier2021
+from .wi_dnr_lidar import WiDNRLiDAR
 
 # Built-in sources, ordered by priority (highest first).
 # resolve_source(auto) picks the first source whose covers(bbox) is True.
 # Higher priority = finer resolution = preferred when coverage overlaps.
 _SOURCES = [
     NPSSfMRainier2021(),   # priority=95 — 0.67m, MORA park boundary only
+    WiDNRLiDAR(),          # priority=90 — 1m,    Wisconsin only
     USGS3DEP10m(),         # priority=80 — 10m,   CONUS/AK/HI fallback
 ]
 
