@@ -33,10 +33,11 @@ _WI_EAST = -86.8
 _WI_SOUTH = 42.4
 _WI_NORTH = 47.1
 
-# Max chunk size per request (degrees). ~0.5° ≈ ~55km at WI latitude.
-_MAX_TILE_DEG = 0.5
-# Max pixel dimension per request
-_MAX_PIXELS = 4096
+# Max chunk size per request (degrees). ~0.25° ≈ ~27km at WI latitude.
+# Smaller chunks avoid service memory limits (500 errors at large sizes).
+_MAX_TILE_DEG = 0.25
+# Max pixel dimension per request (service 500s above ~2048 for large areas)
+_MAX_PIXELS = 2048
 
 
 def _wgs84_to_epsg3071(west: float, south: float, east: float, north: float):
