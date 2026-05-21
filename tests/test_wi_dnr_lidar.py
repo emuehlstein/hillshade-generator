@@ -83,7 +83,7 @@ def test_export_url_bbox_is_projected():
 # ── Chunking ─────────────────────────────────────────────────────────────────
 
 def test_small_bbox_no_chunking():
-    bbox = BBox(-88.5, 43.0, -88.1, 43.4)  # 0.4° x 0.4°, under threshold
+    bbox = BBox(-88.5, 43.0, -88.3, 43.2)  # 0.2° x 0.2°, under 0.25° threshold
     chunks = _chunk_bbox(bbox)
     assert len(chunks) == 1
     assert chunks[0] == bbox
