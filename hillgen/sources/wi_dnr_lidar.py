@@ -220,13 +220,13 @@ class WiDNRLiDAR:
                 progress_cb(f"Mosaicking {len(chunk_paths)} chunks...")
             merged = self._mosaic(chunk_paths, output_dir)
 
-        # Clip to exact bbox
+        # Reproject from EPSG:3071 → EPSG:4326 and clip to bbox in one gdalwarp call
         clipped = output_dir / self._output_filename(bbox)
         if clipped.exists():
             clipped.unlink()
         if progress_cb:
-            progress_cb("Clipping to bbox...")
-        self._clip_to_bbox(merged, clipped, bbox)
+            progress_cb("Reprojecting EPSG:3071 → EPSG:4326 and clipping...")
+        self._reproject_and_clip(merged, clipped, bbox)
 
         if progress_cb:
             size_mb = clipped.stat().st_size / (1024 * 1024)
@@ -268,16 +268,23 @@ class WiDNRLiDAR:
             subprocess.run(cmd, check=True, capture_output=True, text=True)
             return out
 
-    def _clip_to_bbox(self, src: Path, dst: Path, bbox: BBox):
+    def _reproject_and_clip(self, src: Path, dst: Path, bbox: BBox):
+        """Reproject from EPSG:3071 → EPSG:4326 and clip to WGS84 bbox in one pass."""
         cmd = [
             "gdalwarp",
+            "-s_srs", "EPSG:3071",
+            "-t_srs", "EPSG:4326",
+            "-r", "bilinear",
             "-te", str(bbox.west), str(bbox.south), str(bbox.east), str(bbox.north),
+            "-te_srs", "EPSG:4326",
             "-co", "COMPRESS=DEFLATE",
             "-co", "TILED=YES",
             "-co", "BIGTIFF=IF_SAFER",
             str(src), str(dst),
         ]
-        subprocess.run(cmd, check=True, capture_output=True, text=True)
+        result = subprocess.run(cmd, capture_output=True, text=True)
+        if result.returncode != 0:
+            raise RuntimeError(f"gdalwarp reproject+clip failed: {result.stderr}")
 
     def _output_filename(self, bbox: BBox) -> str:
         lat = (bbox.south + bbox.north) / 2
