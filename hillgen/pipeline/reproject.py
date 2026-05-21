@@ -25,13 +25,25 @@ def native_resolution_deg(input_path: Path) -> tuple[float, float] | None:
             return None
         xres_native = abs(gt[1])
         yres_native = abs(gt[5])
-        # If already in degrees (geographic CRS), use as-is
+        # Detect geographic vs projected CRS.
+        # WKT1 uses GEOGCS, WKT2 (GDAL ≥3.x) uses GEOGCRS — check both.
         srs = info.get("coordinateSystem", {}).get("wkt", "")
-        if "GEOGCS" in srs or "GEOGRAPHICCRS" in srs:
-            return xres_native, yres_native
-        # Projected CRS — pixel size is in metres.
-        # Approximate conversion: 1° ≈ 111,320 m (good enough for -tr).
-        return xres_native / 111_320, yres_native / 111_320
+        is_geographic = any(k in srs for k in ("GEOGCS", "GEOGRAPHICCRS", "GEOGCRS"))
+        if is_geographic:
+            # Already in degrees — use as-is, but sanity-check.
+            xres_deg = xres_native
+            yres_deg = yres_native
+        else:
+            # Projected CRS — pixel size is in metres.
+            # Approximate conversion: 1° ≈ 111,320 m (good enough for -tr).
+            xres_deg = xres_native / 111_320
+            yres_deg = yres_native / 111_320
+        # Sanity-check: resolution must be ≥ ~1m in degrees (~9e-6°).
+        # If smaller, something went wrong — let gdalwarp decide instead.
+        _MIN_RES_DEG = 9e-6  # ~1m
+        if xres_deg < _MIN_RES_DEG or yres_deg < _MIN_RES_DEG:
+            return None
+        return xres_deg, yres_deg
     except Exception:
         return None
 
