@@ -107,7 +107,7 @@ def _build_export_url(bbox_wgs84: BBox) -> str:
     params = {
         "bbox": f"{xmin},{ymin},{xmax},{ymax}",
         "bboxSR": "3071",
-        "imageSR": "4326",
+        "imageSR": "3071",  # native CRS — service does not support on-the-fly reprojection
         "size": f"{px_w},{px_h}",
         "format": "tiff",
         "pixelType": "F32",

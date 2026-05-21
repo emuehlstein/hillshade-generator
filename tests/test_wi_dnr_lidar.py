@@ -63,7 +63,7 @@ def test_export_url_contains_required_params():
     assert "pixelType=F32" in url
     assert "format=tiff" in url
     assert "bboxSR=3071" in url
-    assert "imageSR=4326" in url
+    assert "imageSR=3071" in url  # service returns native CRS; gdalwarp reprojects downstream
     assert "noData=-9999" in url
     assert "f=image" in url
 
