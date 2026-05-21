@@ -1,0 +1,56 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          generate_release_notes: true
+
+      - name: Compute tarball SHA256
+        id: sha
+        run: |
+          TAG=${GITHUB_REF_NAME}
+          URL="https://github.com/emuehlstein/hillshade-generator/archive/refs/tags/${TAG}.tar.gz"
+          # Wait a moment for the tarball to be available
+          sleep 10
+          SHA=$(curl -sL "$URL" | sha256sum | cut -d' ' -f1)
+          echo "SHA256 for $TAG: $SHA"
+          echo "sha256=$SHA" >> $GITHUB_OUTPUT
+          echo "tag=$TAG" >> $GITHUB_OUTPUT
+          echo "version=${TAG#v}" >> $GITHUB_OUTPUT
+
+      - name: Update Homebrew tap
+        env:
+          TAP_TOKEN: ${{ secrets.HOMEBREW_TAP_TOKEN }}
+        run: |
+          if [ -z "$TAP_TOKEN" ]; then
+            echo "⚠️  HOMEBREW_TAP_TOKEN not set — skipping tap update"
+            echo "To enable: add a PAT with repo scope as HOMEBREW_TAP_TOKEN secret"
+            exit 0
+          fi
+          git clone "https://x-access-token:${TAP_TOKEN}@github.com/emuehlstein/homebrew-hillshade" /tmp/tap
+          cd /tmp/tap
+          TAG=${{ steps.sha.outputs.tag }}
+          VERSION=${{ steps.sha.outputs.version }}
+          SHA=${{ steps.sha.outputs.sha256 }}
+          URL="https://github.com/emuehlstein/hillshade-generator/archive/refs/tags/${TAG}.tar.gz"
+          sed -i "s|url \"https://github.com/emuehlstein/hillshade-generator.*\"|url \"${URL}\"|" Formula/hillgen.rb
+          sed -i "s|sha256 \"[a-f0-9]*\"|sha256 \"${SHA}\"|" Formula/hillgen.rb
+          sed -i "s|version \"[0-9.]*\"|version \"${VERSION}\"|" Formula/hillgen.rb
+          git config user.email "github-actions@github.com"
+          git config user.name "github-actions[bot]"
+          git add Formula/hillgen.rb
+          git diff --staged --quiet || git commit -m "hillgen ${TAG}"
+          git push

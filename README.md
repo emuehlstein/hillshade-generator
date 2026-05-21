@@ -1,16 +1,78 @@
-# Hillgen
+# hillgen
 
-**Beautiful hillshade maps from real-world terrain data, generated with a single command.**
+Generate stylized hillshade and relief map tiles from real-world terrain data.
 
-Hillgen turns raw DEM (Digital Elevation Model) data into styled, publication-quality hillshade tiles. Run it locally on your Mac or Linux machine.
+🌐 [**scriptedrelief.com**](https://scriptedrelief.com) — Browse the tile library
 
 ```bash
-# Generate a dark hillshade of Mt. Rainier
+hillgen run --place "Artist Point, WA" --theme alpine-glacier --zoom 10-14
+```
+
+---
+
+## Install
+
+### Homebrew (macOS / Linux)
+
+```bash
+brew tap emuehlstein/hillshade
+brew install hillgen
+```
+
+### pip
+
+```bash
+pip install hillgen
+```
+
+### One-liner installer
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/emuehlstein/hillshade-generator/main/install.sh | bash
+```
+
+Checks for prerequisites (Python 3.10+, GDAL), installs hillgen, and adds it to your PATH.
+
+### From source
+
+```bash
+git clone https://github.com/emuehlstein/hillshade-generator
+cd hillshade-generator
+pip install .
+```
+
+---
+
+## Quick Start
+
+```bash
+# Generate a hillshade of Artist Point, WA
+hillgen run --place "Artist Point, WA" --theme alpine-glacier --zoom 10-14
+
+# Generate a dark hillshade of Mt. Rainier at high zoom
 hillgen run --bbox "-121.85,46.72,-121.65,46.92" \
   --theme midnight --zoom 10-16 --output rainier.pmtiles
 ```
 
-→ [**scriptedrelief.com**](https://scriptedrelief.com) — browse the community library
+## CLI Reference
+
+```
+hillgen run       Full pipeline: fetch DEM → shade → style → tile
+hillgen fetch     Download DEM for a location or bbox
+hillgen shade     Generate hillshade from a DEM
+hillgen style     Apply a color theme to a hillshade
+hillgen tile      Package tiles (MBTiles / PMTiles)
+hillgen themes    List available themes
+hillgen sources   List available DEM sources
+hillgen version   Show version and environment info
+```
+
+## Dependencies
+
+- **Python 3.10+**
+- **GDAL 3.6+** — `brew install gdal` (macOS) / `apt install gdal-bin python3-gdal` (Linux)
+- **rasterio**, **numpy**, **click**, **requests** — installed automatically via pip
+- **pmtiles CLI** (optional, for PMTiles output) — `brew install pmtiles`
 
 ---
 
@@ -18,40 +80,30 @@ hillgen run --bbox "-121.85,46.72,-121.65,46.92" \
 
 1. **Acquires** terrain data from public DEM sources (USGS 3DEP, Copernicus, SRTM, state LiDAR programs)
 2. **Processes** with configurable vertical exaggeration, shading modes, and composite blending
-3. **Styles** using a theme system: 15+ built-in themes, easy JSON-based custom themes, community submissions welcome
+3. **Styles** using a theme system: 20+ built-in themes, easy JSON-based custom themes
 4. **Outputs** PMTiles (serverless web maps), MBTiles (offline/ATAK), and reusable intermediates
 
-## Quick Start
+---
 
-### Install
+## Full Install Options
 
-**One-liner (macOS/Linux):**
+### Manual (macOS)
+
 ```bash
-curl -fsSL https://raw.githubusercontent.com/emuehlstein/hillshade-generator/main/install.sh | bash
-```
-
-This checks for prerequisites (Python 3.10+, GDAL, git), clones the repo, creates a venv, installs hillgen, and adds it to your PATH. If anything is missing, it tells you exactly what to install.
-
-**Manual install:**
-```bash
-# Prerequisites (macOS)
 brew install gdal python3
-
-# Clone and install
 git clone https://github.com/emuehlstein/hillshade-generator.git
 cd hillshade-generator
-python3 -m venv .venv
-source .venv/bin/activate
+python3 -m venv .venv && source .venv/bin/activate
 pip install -e .
 hillgen version
 ```
 
-### Dependencies
+### Legacy one-liner (macOS/Linux)
+```bash
+curl -fsSL https://raw.githubusercontent.com/emuehlstein/hillshade-generator/main/install.sh | bash
+```
 
-- **Python 3.10+**
-- **GDAL 3.6+** (`brew install gdal` on macOS / `apt install gdal-bin python3-gdal` on Linux)
-- **mb-util** (for MBTiles packaging): `pip install mbutil` (installed automatically in the venv)
-- **pmtiles** CLI (optional, for PMTiles conversion): `brew install pmtiles` or `go install github.com/protomaps/go-pmtiles/cmd/pmtiles@latest`
+
 
 ### Generate Your First Hillshade
 
