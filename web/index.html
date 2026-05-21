@@ -7,7 +7,7 @@
 <meta name="description" content="Beautiful hillshade maps from real-world terrain data. Free to use. Browse the library or generate your own.">
 <meta property="og:title" content="Scripted Relief">
 <meta property="og:description" content="Beautiful terrain maps. Free to use.">
-<meta property="og:image" content="previews/alpine-glacier.png">
+<meta property="og:image" content="previews/mt-rainier/alpine-glacier.png">
 <meta property="og:type" content="website">
 <meta property="og:url" content="https://scriptedrelief.com">
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
@@ -23,7 +23,12 @@
   --accent: #5b8def;
   --accent-hover: #7ba5ff;
   --radius: 10px;
+  --palette-transition: background-color 0.6s ease, color 0.6s ease, border-color 0.6s ease;
 }
+* { transition: var(--palette-transition); }
+/* Don't transition layout/transform properties */
+.geo-card, .theme-card, img, .hero-bg { transition: transform 0.2s, box-shadow 0.2s, background-color 0.6s ease, border-color 0.6s ease !important; }
+.hero-bg { transition: background-image 0s, background-color 0.6s ease !important; }
 * { margin: 0; padding: 0; box-sizing: border-box; }
 body {
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
@@ -48,29 +53,60 @@ a:hover { color: var(--accent-hover); }
 .hero-bg {
   position: absolute;
   inset: 0;
-  background: url('previews/alpine-glacier.png') center/cover;
-  filter: brightness(0.4);
+  background: url('previews/mt-rainier/alpine-glacier.png') center/cover;
+  filter: brightness(0.45);
   z-index: 0;
+}
+/* Gradient overlay: dark at top/bottom for text legibility */
+.hero::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(to bottom,
+    rgba(0,0,0,0.55) 0%,
+    rgba(0,0,0,0.0) 35%,
+    rgba(0,0,0,0.0) 65%,
+    rgba(0,0,0,0.45) 100%);
+  z-index: 0;
+  pointer-events: none;
 }
 .hero-content {
   position: relative;
   z-index: 1;
-  max-width: 700px;
+  max-width: 760px;
   padding: 0 24px;
 }
 .hero h1 {
   font-size: clamp(2.5rem, 6vw, 4.5rem);
   font-weight: 700;
   letter-spacing: -0.02em;
-  margin-bottom: 16px;
-  background: linear-gradient(135deg, #e0e0e8, #5b8def);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
+  margin-bottom: 4px;
+  color: #fff;
+  text-shadow: 0 2px 24px rgba(0,0,0,0.8), 0 1px 4px rgba(0,0,0,0.9);
+}
+.hero-theme-badge {
+  display: inline-block;
+  font-size: clamp(0.85rem, 1.8vw, 1.1rem);
+  font-weight: 500;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: rgba(255,255,255,0.7);
+  text-shadow: 0 1px 8px rgba(0,0,0,0.8);
+  margin-bottom: 20px;
 }
 .hero p {
-  font-size: 1.25rem;
-  color: var(--text-dim);
+  font-size: 1.2rem;
+  color: rgba(255,255,255,0.82);
+  text-shadow: 0 1px 12px rgba(0,0,0,0.9);
   margin-bottom: 32px;
+  /* Frosted pill for worst-case contrast */
+  display: inline-block;
+  background: rgba(0,0,0,0.28);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  padding: 8px 20px;
+  border-radius: 100px;
+  border: 1px solid rgba(255,255,255,0.1);
 }
 .hero-buttons {
   display: flex;
@@ -177,6 +213,26 @@ section .subtitle {
   color: var(--text-dim);
 }
 
+/* Themes toggle button */
+#themes-toggle-btn {
+  display: block;
+  margin: 20px auto 0;
+  padding: 10px 28px;
+  background: var(--surface);
+  color: var(--text-dim);
+  border: 1px solid #333;
+  border-radius: 20px;
+  font-size: 0.9rem;
+  cursor: pointer;
+  letter-spacing: 0.02em;
+  transition: background 0.2s, color 0.2s, border-color 0.2s;
+}
+#themes-toggle-btn:hover {
+  background: var(--surface2);
+  color: var(--text);
+  border-color: var(--accent);
+}
+
 /* Map viewer */
 #map-section {
   padding: 40px 24px 80px;
@@ -188,7 +244,7 @@ section .subtitle {
 #map {
   width: 100%;
   height: 500px;
-  border-radius: var(--radius);
+  border-radius: var(--radius) var(--radius) 0 0;
   background: #111;
 }
 #map-controls {
@@ -213,6 +269,83 @@ section .subtitle {
   color: var(--text-dim);
   font-family: monospace;
   font-size: 0.85rem;
+}
+#fullscreen-btn {
+  margin-left: auto;
+  padding: 8px 14px;
+  border-radius: 6px;
+  background: var(--surface);
+  color: var(--text-dim);
+  border: 1px solid #333;
+  font-size: 0.9rem;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  transition: background 0.15s, color 0.15s;
+}
+#fullscreen-btn:hover { background: #2a2a2a; color: var(--text); }
+.zoom-btn {
+  padding: 6px 12px;
+  border-radius: 6px;
+  background: var(--surface);
+  color: var(--text);
+  border: 1px solid #333;
+  font-size: 1.1rem;
+  line-height: 1;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+  font-family: monospace;
+  min-width: 32px;
+}
+.zoom-btn:hover { background: var(--surface2); color: var(--accent); }
+#map-infobar {
+  font-family: monospace;
+  font-size: 0.75rem;
+  color: var(--text-dim);
+  background: var(--surface);
+  border-radius: 0 0 var(--radius) var(--radius);
+  padding: 6px 14px;
+  display: flex;
+  gap: 16px;
+  flex-wrap: wrap;
+  align-items: center;
+  border-top: 1px solid #222;
+  min-height: 30px;
+  user-select: all;
+}
+#map-infobar a {
+  color: var(--accent);
+  text-decoration: none;
+  margin-left: auto;
+  font-size: 0.72rem;
+}
+#map-infobar a:hover { text-decoration: underline; }
+#map-container:fullscreen,
+#map-container:-webkit-full-screen {
+  background: #0a0a0a;
+  display: flex;
+  flex-direction: column;
+  padding: 0;
+  max-width: 100%;
+}
+#map-container:fullscreen #map,
+#map-container:-webkit-full-screen #map {
+  flex: 1;
+  height: 100%;
+  border-radius: 0;
+}
+#map-container:fullscreen #map-controls,
+#map-container:-webkit-full-screen #map-controls {
+  padding: 10px 16px;
+  background: #111;
+  border-radius: 0;
+  margin-top: 0;
+}
+#map-container:fullscreen #map-infobar,
+#map-container:-webkit-full-screen #map-infobar {
+  border-radius: 0;
+  background: #0d0d0d;
 }
 #geo-select {
   padding: 8px 16px;
@@ -324,11 +457,12 @@ footer a:hover { color: var(--accent); }
   <div class="hero-bg"></div>
   <div class="hero-content">
     <h1>Scripted Relief</h1>
+    <div class="hero-theme-badge" id="hero-theme-badge">alpine-glacier</div>
     <p>Beautiful terrain maps from real-world elevation data. Free to use.</p>
     <div style="margin-bottom:24px">
       <select id="hero-geo-select" onchange="selectGeography(this.value)" style="padding:10px 20px; border-radius:8px; background:rgba(255,255,255,0.15); color:#fff; border:1px solid rgba(255,255,255,0.3); font-size:1rem; backdrop-filter:blur(4px); cursor:pointer; -webkit-appearance:none; appearance:none;">
-        <option value="st-helens" style="color:#000">Mt. St. Helens, WA</option>
         <option value="mt-rainier" style="color:#000">Mt. Rainier, WA</option>
+        <option value="st-helens" style="color:#000">Mt. St. Helens, WA</option>
         <option value="mauna-kea" style="color:#000">Mauna Kea, Hawaii</option>
         <option value="indiana-dunes" style="color:#000">Indiana Dunes, IN</option>
       </select>
@@ -362,8 +496,20 @@ footer a:hover { color: var(--accent); }
     <div id="map"></div>
     <div id="map-controls">
       <select id="theme-select"></select>
-      <span id="zoom-badge">z12</span>
+      <span id="zoom-badge">z13</span>
+      <button class="zoom-btn" onclick="map.zoomIn(0.5)" title="Zoom in">+</button>
+      <button class="zoom-btn" onclick="map.zoomOut(0.5)" title="Zoom out">−</button>
+      <button id="fullscreen-btn" onclick="toggleFullscreen()" title="Toggle fullscreen">
+        <svg id="fs-icon-expand" xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16">
+          <path d="M1.5 1h4a.5.5 0 0 1 0 1H2v3.5a.5.5 0 0 1-1 0v-4A.5.5 0 0 1 1.5 1zm9 0a.5.5 0 0 1 .5.5V5h3.5a.5.5 0 0 1 0 1h-4a.5.5 0 0 1-.5-.5v-4a.5.5 0 0 1 .5-.5zM1 10.5a.5.5 0 0 1 .5-.5H5v3.5a.5.5 0 0 1-1 0V11H.5a.5.5 0 0 1 0-1zm14.5 0a.5.5 0 0 1-.5.5H12v2.5a.5.5 0 0 1-1 0V10.5a.5.5 0 0 1 .5-.5h4a.5.5 0 0 1 .5.5z"/>
+        </svg>
+        <svg id="fs-icon-compress" xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16" style="display:none">
+          <path d="M5.5 0a.5.5 0 0 1 .5.5v4A.5.5 0 0 1 5.5 5h-4a.5.5 0 0 1 0-1H5V.5a.5.5 0 0 1 .5-.5zm5 0a.5.5 0 0 1 .5.5V4h3.5a.5.5 0 0 1 0 1h-4a.5.5 0 0 1-.5-.5v-4a.5.5 0 0 1 .5-.5zM0 10.5a.5.5 0 0 1 .5-.5h4a.5.5 0 0 1 .5.5v4a.5.5 0 0 1-1 0V11H.5a.5.5 0 0 1-.5-.5zm11 0a.5.5 0 0 1 .5-.5h4a.5.5 0 0 1 0 1H12v3.5a.5.5 0 0 1-1 0v-4z"/>
+        </svg>
+        Fullscreen
+      </button>
     </div>
+    <div id="map-infobar"></div>
   </div>
 </section>
 
@@ -380,7 +526,7 @@ footer a:hover { color: var(--accent); }
     <p style="margin-top:24px">Then generate a hillshade:</p>
     <div class="code-block">
       <button class="copy-btn" onclick="copyRun()">Copy</button>
-      hillgen run --place "Crater Lake" --theme alpine-glacier --zoom 10-14
+      <span id="run-cmd">hillgen run --place "Artist Point, WA" --theme alpine-glacier --zoom 10-14</span>
     </div>
     <div style="display:flex; gap:12px; justify-content:center; flex-wrap:wrap; margin-top:24px">
       <a href="https://github.com/emuehlstein/hillshade-generator" class="btn btn-primary">View on GitHub</a>
@@ -401,8 +547,10 @@ footer a:hover { color: var(--accent); }
 // Load catalog and build the page
 const PMTILES_BASE = '';
 const PREVIEW_THEMES = ['alpine-glacier','midnight','daylight','magma','vivid','desert-sun','aurora','infrared','cool','tactical','simmon','vivid-elevation','cool-elevation','volcanic-ash','forest-canopy','ocean-depth','toxic','sunset-ridge','topo-classic','grayscale','flat-terrain'];
+const FEATURED_THEMES = ['alpine-glacier','infrared','daylight','simmon','magma','vivid-elevation'];
+let themesExpanded = false;
 
-const GEO_ORDER = ['st-helens', 'mt-rainier', 'mauna-kea', 'indiana-dunes'];
+const GEO_ORDER = ['mt-rainier', 'st-helens', 'mauna-kea', 'indiana-dunes'];
 
 const GEOGRAPHIES = {
   'mauna-kea': {
@@ -448,7 +596,7 @@ const GEOGRAPHIES = {
   },
 };
 
-let currentGeo = 'st-helens';
+let currentGeo = 'mt-rainier';
 
 let catalog = null;
 let map = null;
@@ -461,9 +609,23 @@ async function init() {
   } catch(e) {
     catalog = { layers: [], themes: [] };
   }
+
+  // Restore state from share URL params
+  const params = new URLSearchParams(location.search);
+  if (params.get('geo') && GEOGRAPHIES[params.get('geo')]) currentGeo = params.get('geo');
+
   buildGeoGrid();
   buildThemeGrid();
   initMap();
+
+  // After map init, apply shared lat/lng/z/theme
+  if (params.get('lat') && params.get('lng') && params.get('z')) {
+    map.setView([parseFloat(params.get('lat')), parseFloat(params.get('lng'))], parseInt(params.get('z')));
+  }
+  if (params.get('theme')) {
+    const sel = document.getElementById('theme-select');
+    if (sel) { sel.value = params.get('theme'); loadThemeOnMap(params.get('theme'), false); }
+  }
 }
 
 function buildGeoGrid() {
@@ -501,16 +663,21 @@ function buildThemeGrid() {
   const grid = document.getElementById('theme-grid');
   const themes = catalog.themes || [];
 
-  // Show preview themes first, then the rest
+  // Order: featured first, then the rest
   const ordered = [
-    ...PREVIEW_THEMES.map(n => themes.find(t => t.name === n)).filter(Boolean),
+    ...FEATURED_THEMES.map(n => themes.find(t => t.name === n)).filter(Boolean),
+    ...PREVIEW_THEMES.filter(n => !FEATURED_THEMES.includes(n)).map(n => themes.find(t => t.name === n)).filter(Boolean),
     ...themes.filter(t => !PREVIEW_THEMES.includes(t.name))
   ];
 
-  ordered.forEach(theme => {
+  grid.innerHTML = '';
+
+  ordered.forEach((theme, i) => {
     const hasPreview = PREVIEW_THEMES.includes(theme.name);
+    const isFeatured = FEATURED_THEMES.includes(theme.name);
     const card = document.createElement('div');
-    card.className = 'theme-card';
+    card.className = 'theme-card' + (isFeatured ? '' : ' theme-card-extra');
+    if (!isFeatured) card.style.display = themesExpanded ? '' : 'none';
     card.onclick = () => scrollToMap(theme.name);
 
     const imgHtml = hasPreview
@@ -527,10 +694,39 @@ function buildThemeGrid() {
     `;
     grid.appendChild(card);
   });
+
+  // Add "More themes" / "Show less" toggle button
+  const existing = document.getElementById('themes-toggle-btn');
+  if (existing) existing.remove();
+  const totalExtra = ordered.length - FEATURED_THEMES.length;
+  if (totalExtra > 0) {
+    const btn = document.createElement('button');
+    btn.id = 'themes-toggle-btn';
+    btn.onclick = toggleThemes;
+    btn.textContent = themesExpanded ? '▲ Show less' : `▼ ${totalExtra} more themes`;
+    grid.after(btn);
+  }
+}
+
+function toggleThemes() {
+  themesExpanded = !themesExpanded;
+  document.querySelectorAll('.theme-card-extra').forEach(el => {
+    el.style.display = themesExpanded ? '' : 'none';
+  });
+  const btn = document.getElementById('themes-toggle-btn');
+  const totalExtra = document.querySelectorAll('.theme-card-extra').length;
+  if (btn) btn.textContent = themesExpanded ? '▲ Show less' : `▼ ${totalExtra} more themes`;
 }
 
 function initMap() {
-  map = L.map('map').setView([46.2, -122.175], 12);
+  const initGeo = GEOGRAPHIES[currentGeo];
+  map = L.map('map', {
+    zoomSnap: 0,
+    zoomDelta: 0.25,
+    wheelPxPerZoomLevel: 120,
+    zoomControl: false,
+  }).setView(initGeo.center, 13);
+  window._srMap = map;
 
   L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}@2x.png', {
     attribution: '&copy; OSM &copy; CARTO',
@@ -539,7 +735,11 @@ function initMap() {
 
   // Zoom badge
   const badge = document.getElementById('zoom-badge');
-  map.on('zoomend', () => badge.textContent = 'z' + map.getZoom());
+  map.on('zoomend moveend', () => {
+    const z = map.getZoom();
+    badge.textContent = 'z' + (Number.isInteger(z) ? z : z.toFixed(2));
+    updateInfoBar();
+  });
   badge.textContent = 'z' + map.getZoom();
 
   // Build theme selector
@@ -550,11 +750,11 @@ function initMap() {
     opt.textContent = t.name;
     select.appendChild(opt);
   });
-  select.onchange = () => loadThemeOnMap(select.value);
+  select.onchange = () => loadThemeOnMap(select.value, false);
 
   // Load alpine-glacier by default (hero theme)
   select.value = 'alpine-glacier';
-  loadThemeOnMap('alpine-glacier');
+  loadThemeOnMap('alpine-glacier', true);
 }
 
 function switchGeography(geoKey) {
@@ -565,17 +765,16 @@ function switchGeography(geoKey) {
   const sub = document.getElementById('themes-subtitle');
   if (sub) sub.textContent = 'Every theme applied to ' + geo.name;
 
-  // Update hero background
-  document.querySelector('.hero-bg').style.backgroundImage = `url('${geo.heroPreview}')`;
-
   // Rebuild theme grid with new previews
+  themesExpanded = false;
   document.getElementById('theme-grid').innerHTML = '';
   buildThemeGrid();
 
-  // Reload map
+  // Reload map + update images
   const select = document.getElementById('theme-select');
-  loadThemeOnMap(select.value || 'alpine-glacier');
-  map.fitBounds(geo.bounds);
+  const activeTheme = select.value || 'alpine-glacier';
+  updateThemeImages(activeTheme);
+  loadThemeOnMap(activeTheme, true);
 }
 
 const S3_BASE = 'https://scriptedrelief.s3.us-east-2.amazonaws.com';
@@ -593,7 +792,7 @@ function previewUrl(theme) {
 
 const PUBLISHED_THEMES_BY_GEO = {
   'st-helens':     ['midnight','daylight','alpine-glacier','magma','vivid','desert-sun','aurora','infrared','cool','tactical','simmon'],
-  'mt-rainier':    ['midnight','daylight','alpine-glacier','magma','vivid','desert-sun','aurora','infrared','cool','tactical','simmon'],
+  'mt-rainier':    ['alpine-glacier','aurora','cool','cool-elevation','daylight','desert-sun','flat-terrain','forest-canopy','grayscale','infrared','magma','midnight','ocean-depth','simmon','sunset-ridge','tactical','topo-classic','toxic','vivid','vivid-elevation','volcanic-ash'],
   'mauna-kea':     ['midnight','daylight','alpine-glacier','magma','vivid','desert-sun','aurora','infrared','cool','tactical','simmon'],
   'indiana-dunes': ['alpine-glacier','midnight','daylight','magma','vivid','desert-sun','aurora','infrared','cool','tactical','simmon','vivid-elevation','cool-elevation','volcanic-ash','forest-canopy','ocean-depth','toxic','sunset-ridge','topo-classic','grayscale','flat-terrain'],
 };
@@ -640,12 +839,244 @@ const PMTilesLayer = L.GridLayer.extend({
   }
 });
 
-function loadThemeOnMap(themeName) {
+// Per-theme CSS palette: [bg, surface, surface2, accent, accentHover, text, textDim]
+// Derived from hillgen ramp shadow/mid/peak colors
+const THEME_PALETTES = {
+  'alpine-glacier': {
+    bg:          '#0b0d1e',
+    surface:     '#141e30',
+    surface2:    '#1c2a40',
+    accent:      '#62a29e',
+    accentHover: '#82bab6',
+    text:        '#dde8e6',
+    textDim:     '#7a9e9c',
+  },
+  'aurora': {
+    bg:          '#02040e',
+    surface:     '#0a1430',
+    surface2:    '#0e1f42',
+    accent:      '#00a86e',
+    accentHover: '#00c882',
+    text:        '#d8f0dc',
+    textDim:     '#5a9e80',
+  },
+  'cool': {
+    bg:          '#111820',
+    surface:     '#1a2430',
+    surface2:    '#223040',
+    accent:      '#88a4ac',
+    accentHover: '#a8c0c6',
+    text:        '#d0d8dc',
+    textDim:     '#708090',
+  },
+  'cool-elevation': {
+    bg:          '#0e141e',
+    surface:     '#18222e',
+    surface2:    '#20303e',
+    accent:      '#6888a8',
+    accentHover: '#88a8c8',
+    text:        '#ccd4dc',
+    textDim:     '#6878a0',
+  },
+  'daylight': {
+    bg:          '#d8d0c4',
+    surface:     '#e8e0d4',
+    surface2:    '#f0e8dc',
+    accent:      '#8a7060',
+    accentHover: '#6a5040',
+    text:        '#1a1410',
+    textDim:     '#5a4e44',
+    light: true,
+  },
+  'desert-sun': {
+    bg:          '#1e0e06',
+    surface:     '#2e1a0a',
+    surface2:    '#3e2410',
+    accent:      '#d89b4b',
+    accentHover: '#f0b860',
+    text:        '#f5ead8',
+    textDim:     '#a07840',
+  },
+  'flat-terrain': {
+    bg:          '#0e1614',
+    surface:     '#182422',
+    surface2:    '#20302e',
+    accent:      '#4a8868',
+    accentHover: '#68a882',
+    text:        '#d0e4dc',
+    textDim:     '#508878',
+  },
+  'forest-canopy': {
+    bg:          '#050c05',
+    surface:     '#0e1c0e',
+    surface2:    '#162816',
+    accent:      '#44871e',
+    accentHover: '#60a830',
+    text:        '#d8ecc8',
+    textDim:     '#4e8840',
+  },
+  'grayscale': {
+    bg:          '#0a0a0a',
+    surface:     '#161616',
+    surface2:    '#202020',
+    accent:      '#888888',
+    accentHover: '#aaaaaa',
+    text:        '#e0e0e0',
+    textDim:     '#707070',
+  },
+  'infrared': {
+    bg:          '#05050a',
+    surface:     '#100a14',
+    surface2:    '#180f1e',
+    accent:      '#dc1c1c',
+    accentHover: '#ff3030',
+    text:        '#f0d8d8',
+    textDim:     '#a04040',
+  },
+  'magma': {
+    bg:          '#08040c',
+    surface:     '#180810',
+    surface2:    '#240e18',
+    accent:      '#c33714',
+    accentHover: '#e04820',
+    text:        '#faecd8',
+    textDim:     '#a04830',
+  },
+  'midnight': {
+    bg:          '#0a0f1e',
+    surface:     '#121a2e',
+    surface2:    '#1a2440',
+    accent:      '#5080b4',
+    accentHover: '#7098cc',
+    text:        '#d0d8f0',
+    textDim:     '#5060a0',
+  },
+  'ocean-depth': {
+    bg:          '#020a28',
+    surface:     '#0a1638',
+    surface2:    '#102048',
+    accent:      '#2387af',
+    accentHover: '#38a8d0',
+    text:        '#d0eaf8',
+    textDim:     '#4878a0',
+  },
+  'simmon': {
+    bg:          '#0a0e1a',
+    surface:     '#141824',
+    surface2:    '#1c2030',
+    accent:      '#5b8def',
+    accentHover: '#7ba5ff',
+    text:        '#e0e0f0',
+    textDim:     '#6878b0',
+  },
+  'sunset-ridge': {
+    bg:          '#160826',
+    surface:     '#22102e',
+    surface2:    '#2e183c',
+    accent:      '#d25038',
+    accentHover: '#e87060',
+    text:        '#f8e8d8',
+    textDim:     '#a06058',
+  },
+  'tactical': {
+    bg:          '#0f1008',
+    surface:     '#1c1e10',
+    surface2:    '#252818',
+    accent:      '#546828',
+    accentHover: '#6a8234',
+    text:        '#d0d4b8',
+    textDim:     '#6a7848',
+  },
+  'topo-classic': {
+    bg:          '#0e1e12',
+    surface:     '#182c1e',
+    surface2:    '#203828',
+    accent:      '#4a9458',
+    accentHover: '#60b070',
+    text:        '#d4e8d8',
+    textDim:     '#508858',
+  },
+  'toxic': {
+    bg:          '#080e04',
+    surface:     '#101a08',
+    surface2:    '#18240c',
+    accent:      '#7cae0e',
+    accentHover: '#9ace1a',
+    text:        '#e0f0c0',
+    textDim:     '#609010',
+  },
+  'vivid': {
+    bg:          '#0e1828',
+    surface:     '#162232',
+    surface2:    '#1e2c3e',
+    accent:      '#c06a30',
+    accentHover: '#e08040',
+    text:        '#f0e0c8',
+    textDim:     '#907050',
+  },
+  'vivid-elevation': {
+    bg:          '#0e1828',
+    surface:     '#162232',
+    surface2:    '#1e2c40',
+    accent:      '#e08248',
+    accentHover: '#f09858',
+    text:        '#f0e0d0',
+    textDim:     '#907860',
+  },
+  'volcanic-ash': {
+    bg:          '#100e0c',
+    surface:     '#1c1a18',
+    surface2:    '#282422',
+    accent:      '#807370',
+    accentHover: '#a09490',
+    text:        '#e8e4e2',
+    textDim:     '#807070',
+  },
+};
+
+const DEFAULT_PALETTE = {
+  bg: '#0a0a0f', surface: '#14141f', surface2: '#1e1e2e',
+  accent: '#5b8def', accentHover: '#7ba5ff',
+  text: '#e0e0e8', textDim: '#8888a0',
+};
+
+function applyThemePalette(themeName) {
+  const p = THEME_PALETTES[themeName] || DEFAULT_PALETTE;
+  const root = document.documentElement;
+  root.style.setProperty('--bg',           p.bg);
+  root.style.setProperty('--surface',      p.surface);
+  root.style.setProperty('--surface2',     p.surface2);
+  root.style.setProperty('--accent',       p.accent);
+  root.style.setProperty('--accent-hover', p.accentHover);
+  root.style.setProperty('--text',         p.text);
+  root.style.setProperty('--text-dim',     p.textDim);
+}
+
+function updateThemeImages(themeName) {
+  const geo = GEOGRAPHIES[currentGeo];
+  const previewBase = geo.previewDir || ('previews/' + currentGeo);
+  const imgUrl = `${previewBase}/${themeName}.png`;
+  // Hero background
+  document.querySelector('.hero-bg').style.backgroundImage = `url('${imgUrl}')`;
+  // Update ALL geo card thumbnails to the selected theme
+  GEO_ORDER.forEach(key => {
+    const card = document.getElementById('geo-card-' + key);
+    if (!card) return;
+    const cardGeo = GEOGRAPHIES[key];
+    const cardPreviewBase = cardGeo.previewDir || ('previews/' + key);
+    const cardImg = card.querySelector('img');
+    if (cardImg) cardImg.src = `${cardPreviewBase}/${themeName}.png`;
+  });
+}
+
+function loadThemeOnMap(themeName, resetView) {
   if (currentLayer) map.removeLayer(currentLayer);
   const geo = GEOGRAPHIES[currentGeo];
+  updateThemeImages(themeName);
+  applyThemePalette(themeName);
+  updateRunCommand(themeName);
 
   if (getPublishedThemes().includes(themeName)) {
-    // Clear PMTiles cache when geo changes
     const cacheKey = `${currentGeo}_${themeName}`;
     if (!pmtilesCache[cacheKey]) {
       pmtilesCache[cacheKey] = new pmtiles.PMTiles(pmtilesUrl(themeName));
@@ -654,14 +1085,42 @@ function loadThemeOnMap(themeName) {
   } else {
     currentLayer = L.imageOverlay(previewUrl(themeName), geo.bounds, { opacity: 0.9 }).addTo(map);
   }
-  map.fitBounds(geo.bounds);
+  // Only reset view when switching geography, not when just changing theme
+  if (resetView) map.setView(geo.center, 13);
+  updateInfoBar();
 }
 
 function scrollToMap(themeName) {
   const select = document.getElementById('theme-select');
   select.value = themeName;
-  loadThemeOnMap(themeName);
+  loadThemeOnMap(themeName, false);
   document.getElementById('map-section').scrollIntoView({ behavior: 'smooth' });
+}
+
+function toggleFullscreen() {
+  const container = document.getElementById('map-container');
+  const expandIcon = document.getElementById('fs-icon-expand');
+  const compressIcon = document.getElementById('fs-icon-compress');
+  const btn = document.getElementById('fullscreen-btn');
+  const isFs = !!(document.fullscreenElement || document.webkitFullscreenElement);
+  if (!isFs) {
+    const req = container.requestFullscreen || container.webkitRequestFullscreen;
+    if (req) req.call(container);
+  } else {
+    const exit = document.exitFullscreen || document.webkitExitFullscreen;
+    if (exit) exit.call(document);
+  }
+}
+document.addEventListener('fullscreenchange', _syncFsIcon);
+document.addEventListener('webkitfullscreenchange', _syncFsIcon);
+function _syncFsIcon() {
+  const isFs = !!(document.fullscreenElement || document.webkitFullscreenElement);
+  document.getElementById('fs-icon-expand').style.display = isFs ? 'none' : '';
+  document.getElementById('fs-icon-compress').style.display = isFs ? '' : 'none';
+  const btn = document.getElementById('fullscreen-btn');
+  btn.lastChild.textContent = isFs ? ' Exit' : ' Fullscreen';
+  // Invalidate map size after transition
+  if (window._srMap) setTimeout(() => window._srMap.invalidateSize(), 200);
 }
 
 function copyInstall() {
@@ -672,10 +1131,40 @@ function copyInstall() {
 }
 
 function copyRun() {
-  const text = 'hillgen run --place "Crater Lake" --theme alpine-glacier --zoom 10-14';
+  const text = document.getElementById('run-cmd').textContent;
   navigator.clipboard.writeText(text);
   event.target.textContent = 'Copied!';
   setTimeout(() => event.target.textContent = 'Copy', 2000);
+}
+
+function updateRunCommand(themeName) {
+  const el = document.getElementById('run-cmd');
+  if (el) el.textContent = `hillgen run --place "Artist Point, WA" --theme ${themeName} --zoom 10-14`;
+  const badge = document.getElementById('hero-theme-badge');
+  if (badge) badge.textContent = themeName;
+}
+
+function updateInfoBar() {
+  const bar = document.getElementById('map-infobar');
+  if (!bar || !map) return;
+  const c = map.getCenter();
+  const z = map.getZoom();
+  const bounds = map.getBounds();
+  const theme = document.getElementById('theme-select')?.value || '';
+  const lat = c.lat.toFixed(5);
+  const lng = c.lng.toFixed(5);
+  const w = bounds.getWest().toFixed(4);
+  const s = bounds.getSouth().toFixed(4);
+  const e = bounds.getEast().toFixed(4);
+  const n = bounds.getNorth().toFixed(4);
+  const shareUrl = `${location.origin}${location.pathname}?geo=${currentGeo}&theme=${theme}&lat=${lat}&lng=${lng}&z=${z}`;
+  bar.innerHTML = `
+    <span title="Current zoom level">z${z}</span>
+    <span title="Center coordinates">${lat}, ${lng}</span>
+    <span title="Viewport bounding box" style="color:#666">${w},${s},${e},${n}</span>
+    <span title="Active theme">${theme}</span>
+    <a href="${shareUrl}" title="Copy shareable link" onclick="navigator.clipboard.writeText('${shareUrl}'); this.textContent='✓ copied'; setTimeout(()=>updateInfoBar(),1500); return false;">&#128279; share</a>
+  `;
 }
 
 init();
