@@ -620,12 +620,33 @@ async function init() {
 
   // After map init, apply shared lat/lng/z/theme
   if (params.get('lat') && params.get('lng') && params.get('z')) {
-    map.setView([parseFloat(params.get('lat')), parseFloat(params.get('lng'))], parseInt(params.get('z')));
+    map.setView([parseFloat(params.get('lat')), parseFloat(params.get('lng'))], parseFloat(params.get('z')));
   }
   if (params.get('theme')) {
     const sel = document.getElementById('theme-select');
     if (sel) { sel.value = params.get('theme'); loadThemeOnMap(params.get('theme'), false); }
   }
+
+  // Explore mode: hide everything except the map, go fullscreen
+  if (params.get('view') === 'explore') {
+    enterExploreMode();
+  }
+}
+
+function enterExploreMode() {
+  // Hide all sections except map
+  document.querySelectorAll('section:not(#map-section), .hero, footer').forEach(el => el.style.display = 'none');
+  document.body.style.background = 'var(--bg)';
+  document.body.style.overflow = 'hidden';
+  // Make map fill the viewport
+  const container = document.getElementById('map-container');
+  const mapEl = document.getElementById('map');
+  container.style.cssText = 'position:fixed;inset:0;max-width:100%;margin:0;display:flex;flex-direction:column;z-index:9999;';
+  mapEl.style.cssText = 'width:100%;flex:1;height:auto;border-radius:0;';
+  document.getElementById('map-controls').style.cssText = 'padding:8px 14px;background:#111;border-radius:0;margin-top:0;';
+  document.getElementById('map-infobar').style.borderRadius = '0';
+  // Resize map to fill
+  setTimeout(() => map && map.invalidateSize(), 100);
 }
 
 function buildGeoGrid() {
@@ -1157,7 +1178,7 @@ function updateInfoBar() {
   const s = bounds.getSouth().toFixed(4);
   const e = bounds.getEast().toFixed(4);
   const n = bounds.getNorth().toFixed(4);
-  const shareUrl = `${location.origin}${location.pathname}?geo=${currentGeo}&theme=${theme}&lat=${lat}&lng=${lng}&z=${z}`;
+  const shareUrl = `${location.origin}${location.pathname}?view=explore&geo=${currentGeo}&theme=${theme}&lat=${lat}&lng=${lng}&z=${z}`;
   bar.innerHTML = `
     <span title="Current zoom level">z${z}</span>
     <span title="Center coordinates">${lat}, ${lng}</span>
