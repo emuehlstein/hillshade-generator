@@ -143,14 +143,20 @@ def _download_tile(url: str, output: Path, session: requests.Session) -> Path:
     """Download a single .img tile."""
     if output.exists():
         return output
-    tmp = output.with_suffix(".tmp")
+    # Use a worker-unique tmp name to avoid rename races in parallel downloads
+    import os
+    tmp = output.with_suffix(f".tmp{os.getpid()}")
     try:
         with session.get(url, stream=True, timeout=120) as r:
             r.raise_for_status()
             with open(tmp, "wb") as f:
                 for chunk in r.iter_content(chunk_size=4 * 1024 * 1024):
                     f.write(chunk)
-        tmp.rename(output)
+        # Atomic replace: if another worker already finished, just discard ours
+        if not output.exists():
+            tmp.rename(output)
+        else:
+            tmp.unlink()
     except Exception:
         if tmp.exists():
             tmp.unlink()
