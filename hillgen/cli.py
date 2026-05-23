@@ -736,9 +736,21 @@ def view(path, port):
 @cli.command()
 @click.argument("path", type=click.Path(exists=True))
 @click.option("--dry-run", is_flag=True, help="Validate only, don't upload")
-def publish(path, dry_run):
-    """Publish a PMTiles file to the community library."""
-    import struct
+@click.option("--gallery", is_flag=True, help="Upload to community gallery (gallery/ prefix)")
+@click.option("--title", type=str, default=None, help="Display title for gallery entry")
+@click.option("--caption", type=str, default=None, help="Short description for gallery entry")
+@click.option("--author", type=str, default=None, help="Your name or handle")
+@click.option("--preview", type=click.Path(exists=True), default=None, help="Preview PNG to upload alongside")
+def publish(path, dry_run, gallery, title, caption, author, preview):
+    """Publish a PMTiles file to scriptedrelief.com.
+
+    Default: uploads to tiles/ (curator use).
+    With --gallery: uploads to gallery/ for community submissions.
+    Requires AWS credentials with write access to s3://scriptedrelief.
+    Gallery contributors: set AWS_ACCESS_KEY_ID + AWS_SECRET_ACCESS_KEY env vars.
+    """
+    import json
+    import datetime
 
     p = Path(path)
     if not p.suffix == ".pmtiles":
@@ -773,20 +785,73 @@ def publish(path, dry_run):
     # Upload to S3
     try:
         import boto3
+        from botocore.exceptions import NoCredentialsError, ClientError
     except ImportError:
         click.echo("Error: boto3 required for publish. pip install boto3")
         raise SystemExit(1)
 
     bucket = "scriptedrelief"
-    key = f"tiles/{p.name}"
+    prefix = "gallery/" if gallery else "tiles/"
+    region = "us-east-2"
 
-    click.echo(f"Uploading to s3://{bucket}/{key}...")
-    s3 = boto3.client("s3")
-    s3.upload_file(str(p), bucket, key, ExtraArgs={"ContentType": "application/x-protobuf"})
-    click.echo(f"Published: https://scriptedrelief.com/{key}")
+    try:
+        s3 = boto3.client("s3", region_name=region)
 
-    # TODO: update catalog.json, invalidate CloudFront
-    click.echo("Note: catalog.json update not yet implemented.")
+        # Upload PMTiles
+        key = f"{prefix}{p.name}"
+        click.echo(f"Uploading to s3://{bucket}/{key}...")
+        s3.upload_file(
+            str(p), bucket, key,
+            ExtraArgs={"ContentType": "application/x-protobuf", "CacheControl": "public, max-age=31536000"}
+        )
+        click.echo(f"✓ PMTiles: https://scriptedrelief.com/{key}")
+
+        # Upload preview PNG if provided
+        preview_url = None
+        if preview:
+            prev_path = Path(preview)
+            prev_key = f"{prefix}{prev_path.name}"
+            click.echo(f"Uploading preview to s3://{bucket}/{prev_key}...")
+            s3.upload_file(
+                str(prev_path), bucket, prev_key,
+                ExtraArgs={"ContentType": "image/png", "CacheControl": "public, max-age=31536000"}
+            )
+            preview_url = f"https://scriptedrelief.com/{prev_key}"
+            click.echo(f"✓ Preview: {preview_url}")
+
+        if gallery:
+            # Write a sidecar .json entry so the gallery page can discover it
+            entry = {
+                "pmtiles": f"https://scriptedrelief.com/{key}",
+                "preview": preview_url,
+                "title": title or p.stem,
+                "caption": caption or "",
+                "author": author or "anonymous",
+                "size_mb": round(size_mb, 1),
+                "submitted": datetime.datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%SZ"),
+            }
+            entry_key = f"{prefix}{p.stem}.json"
+            s3.put_object(
+                Bucket=bucket,
+                Key=entry_key,
+                Body=json.dumps(entry, indent=2).encode(),
+                ContentType="application/json",
+                CacheControl="public, max-age=60",
+            )
+            click.echo(f"✓ Entry:   https://scriptedrelief.com/{entry_key}")
+            click.echo("")
+            click.echo("Submission uploaded! It will appear in the gallery shortly.")
+        else:
+            click.echo(f"Published: https://scriptedrelief.com/{key}")
+            click.echo("Note: catalog.json update not yet implemented.")
+
+    except NoCredentialsError:
+        click.echo("Error: no AWS credentials found.")
+        click.echo("Set AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY env vars, then retry.")
+        raise SystemExit(1)
+    except ClientError as e:
+        click.echo(f"Error uploading: {e}")
+        raise SystemExit(1)
 
 
 @cli.group()

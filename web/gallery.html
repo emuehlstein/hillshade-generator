@@ -1,0 +1,608 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Community Gallery — Scripted Relief</title>
+<meta name="description" content="Hillshade maps made by the community with hillgen. Submit your own.">
+<meta property="og:title" content="Community Gallery — Scripted Relief">
+<meta property="og:description" content="Hillshade maps made by the community with hillgen.">
+<meta property="og:type" content="website">
+<meta property="og:url" content="https://scriptedrelief.com/gallery.html">
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="https://unpkg.com/pmtiles@3.0.6/dist/pmtiles.js"></script>
+<style>
+:root {
+  --bg: #0a0a0f;
+  --surface: #14141f;
+  --surface2: #1e1e2e;
+  --text: #e0e0e8;
+  --text-dim: #8888a0;
+  --accent: #5b8def;
+  --accent-hover: #7ba5ff;
+  --radius: 10px;
+}
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  line-height: 1.6;
+  min-height: 100vh;
+}
+a { color: var(--accent); text-decoration: none; }
+a:hover { color: var(--accent-hover); }
+
+/* ── Nav ── */
+nav {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 18px 32px;
+  background: var(--surface);
+  border-bottom: 1px solid rgba(255,255,255,0.06);
+  position: sticky;
+  top: 0;
+  z-index: 100;
+}
+.nav-logo {
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: var(--text);
+  letter-spacing: -0.3px;
+}
+.nav-logo span { color: var(--accent); }
+.nav-links { display: flex; gap: 24px; font-size: 0.9rem; color: var(--text-dim); }
+.nav-links a { color: var(--text-dim); }
+.nav-links a:hover { color: var(--text); }
+.nav-links a.active { color: var(--accent); }
+
+/* ── Hero ── */
+.page-hero {
+  padding: 72px 32px 56px;
+  text-align: center;
+  border-bottom: 1px solid rgba(255,255,255,0.05);
+}
+.page-hero h1 {
+  font-size: clamp(2rem, 4vw, 3rem);
+  font-weight: 800;
+  letter-spacing: -1px;
+  margin-bottom: 16px;
+}
+.page-hero h1 em { color: var(--accent); font-style: normal; }
+.page-hero p {
+  color: var(--text-dim);
+  font-size: 1.1rem;
+  max-width: 560px;
+  margin: 0 auto 32px;
+}
+.btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 22px;
+  border-radius: var(--radius);
+  font-size: 0.95rem;
+  font-weight: 600;
+  cursor: pointer;
+  border: none;
+  transition: background 0.15s, transform 0.1s;
+}
+.btn:active { transform: scale(0.97); }
+.btn-primary { background: var(--accent); color: #fff; }
+.btn-primary:hover { background: var(--accent-hover); color: #fff; }
+.btn-secondary { background: var(--surface2); color: var(--text); border: 1px solid rgba(255,255,255,0.1); }
+.btn-secondary:hover { background: #2a2a3e; color: var(--text); }
+
+/* ── Submit panel ── */
+.submit-panel {
+  max-width: 860px;
+  margin: 0 auto;
+  padding: 40px 32px 0;
+}
+.submit-card {
+  background: var(--surface);
+  border: 1px solid rgba(255,255,255,0.08);
+  border-radius: var(--radius);
+  padding: 28px 32px;
+}
+.submit-card h2 {
+  font-size: 1.1rem;
+  font-weight: 700;
+  margin-bottom: 12px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.submit-card p { color: var(--text-dim); font-size: 0.9rem; margin-bottom: 16px; }
+.code-block {
+  background: #0d0d18;
+  border: 1px solid rgba(255,255,255,0.07);
+  border-radius: 8px;
+  padding: 14px 18px;
+  font-family: 'SF Mono', 'Fira Code', 'Consolas', monospace;
+  font-size: 0.82rem;
+  color: #a0c8ff;
+  overflow-x: auto;
+  white-space: pre;
+  margin-bottom: 10px;
+  position: relative;
+}
+.copy-btn {
+  position: absolute;
+  top: 8px;
+  right: 10px;
+  background: rgba(91,141,239,0.15);
+  border: 1px solid rgba(91,141,239,0.3);
+  color: var(--accent);
+  border-radius: 5px;
+  padding: 3px 10px;
+  font-size: 0.75rem;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+.copy-btn:hover { background: rgba(91,141,239,0.3); }
+.hint { color: var(--text-dim); font-size: 0.82rem; }
+.hint code { color: #a0c8ff; background: rgba(160,200,255,0.08); padding: 1px 5px; border-radius: 3px; }
+
+/* ── Gallery grid ── */
+.gallery-section {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 48px 32px;
+}
+.gallery-section h2 {
+  font-size: 1.4rem;
+  font-weight: 700;
+  margin-bottom: 8px;
+}
+.gallery-meta { color: var(--text-dim); font-size: 0.88rem; margin-bottom: 32px; }
+.gallery-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: 20px;
+}
+.gallery-card {
+  background: var(--surface);
+  border: 1px solid rgba(255,255,255,0.07);
+  border-radius: var(--radius);
+  overflow: hidden;
+  cursor: pointer;
+  transition: transform 0.15s, box-shadow 0.15s, border-color 0.15s;
+}
+.gallery-card:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 8px 32px rgba(0,0,0,0.4);
+  border-color: rgba(91,141,239,0.3);
+}
+.card-thumb {
+  width: 100%;
+  aspect-ratio: 1;
+  object-fit: cover;
+  display: block;
+  background: var(--surface2);
+}
+.card-thumb-placeholder {
+  width: 100%;
+  aspect-ratio: 1;
+  background: linear-gradient(135deg, #1a1a2e, #0d0d18);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 2.5rem;
+  color: rgba(255,255,255,0.1);
+}
+.card-body { padding: 16px 18px 18px; }
+.card-title {
+  font-weight: 700;
+  font-size: 1rem;
+  margin-bottom: 4px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.card-caption {
+  color: var(--text-dim);
+  font-size: 0.85rem;
+  margin-bottom: 10px;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.card-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 0.78rem;
+  color: var(--text-dim);
+  border-top: 1px solid rgba(255,255,255,0.05);
+  padding-top: 10px;
+  margin-top: 10px;
+}
+.card-author { font-weight: 600; color: var(--accent); }
+.card-size { }
+.card-view-btn {
+  display: inline-block;
+  margin-top: 10px;
+  padding: 6px 14px;
+  background: var(--surface2);
+  border: 1px solid rgba(255,255,255,0.08);
+  border-radius: 6px;
+  font-size: 0.82rem;
+  color: var(--text);
+  transition: background 0.15s;
+}
+.card-view-btn:hover { background: #2a2a3e; color: var(--accent); }
+
+/* ── Loading / empty state ── */
+.state-loading, .state-empty {
+  text-align: center;
+  padding: 80px 32px;
+  color: var(--text-dim);
+}
+.state-loading .spinner {
+  width: 36px;
+  height: 36px;
+  border: 3px solid rgba(91,141,239,0.2);
+  border-top-color: var(--accent);
+  border-radius: 50%;
+  margin: 0 auto 20px;
+  animation: spin 0.8s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+.state-empty h3 { font-size: 1.2rem; color: var(--text); margin-bottom: 8px; }
+
+/* ── Map modal ── */
+.modal-overlay {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.85);
+  z-index: 1000;
+  align-items: center;
+  justify-content: center;
+}
+.modal-overlay.open { display: flex; }
+.modal {
+  background: var(--surface);
+  border: 1px solid rgba(255,255,255,0.1);
+  border-radius: 14px;
+  width: min(95vw, 900px);
+  max-height: 90vh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+.modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 20px;
+  border-bottom: 1px solid rgba(255,255,255,0.07);
+}
+.modal-title { font-weight: 700; font-size: 1rem; }
+.modal-close {
+  background: none;
+  border: none;
+  color: var(--text-dim);
+  font-size: 1.4rem;
+  cursor: pointer;
+  line-height: 1;
+  padding: 2px 6px;
+  border-radius: 4px;
+  transition: background 0.1s;
+}
+.modal-close:hover { background: rgba(255,255,255,0.08); color: var(--text); }
+#modal-map { flex: 1; min-height: 500px; }
+
+/* ── Footer ── */
+footer {
+  text-align: center;
+  padding: 32px;
+  color: var(--text-dim);
+  font-size: 0.85rem;
+  border-top: 1px solid rgba(255,255,255,0.05);
+  margin-top: 40px;
+}
+footer a { color: var(--text-dim); }
+footer a:hover { color: var(--accent); }
+</style>
+</head>
+<body>
+
+<!-- Nav -->
+<nav>
+  <a href="/" class="nav-logo">scripted<span>relief</span></a>
+  <div class="nav-links">
+    <a href="/">Themes</a>
+    <a href="/gallery.html" class="active">Gallery</a>
+    <a href="https://github.com/emuehlstein/hillshade-generator" target="_blank">GitHub</a>
+  </div>
+</nav>
+
+<!-- Hero -->
+<div class="page-hero">
+  <h1>Community <em>Gallery</em></h1>
+  <p>Hillshade maps made with hillgen. Submit yours — every terrain tells a different story.</p>
+</div>
+
+<!-- Submit instructions -->
+<div class="submit-panel">
+  <div class="submit-card">
+    <h2>⬆ Submit your map</h2>
+    <p>Generate a hillshade with <code>hillgen run</code>, then publish it to the gallery with your contributor key. Your map will appear below automatically.</p>
+
+    <div style="position:relative">
+      <div class="code-block" id="code-export"># Set your contributor key (one-time)
+export AWS_ACCESS_KEY_ID=&lt;your-key-id&gt;
+export AWS_SECRET_ACCESS_KEY=&lt;your-secret&gt;
+export AWS_DEFAULT_REGION=us-east-2
+
+# Generate a hillshade
+hillgen run --place "La Porte County, IN" --theme cool-elevation --exaggeration 9 --zoom 10-16
+
+# Publish to the gallery
+hillgen publish --gallery \
+  --title "La Porte County" \
+  --caption "Indiana LiDAR, 9x exaggeration" \
+  --author "yourname" \
+  --preview path/to/preview.png \
+  path/to/output.pmtiles</div>
+      <button class="copy-btn" onclick="copyCode()">copy</button>
+    </div>
+    <p class="hint">Don't have a key? Ask <a href="https://github.com/emuehlstein/hillshade-generator" target="_blank">@emuehlstein</a> for contributor access.</p>
+  </div>
+</div>
+
+<!-- Gallery grid -->
+<div class="gallery-section">
+  <h2>Submissions</h2>
+  <p class="gallery-meta" id="gallery-count">Loading...</p>
+  <div id="gallery-grid" class="gallery-grid">
+    <div class="state-loading">
+      <div class="spinner"></div>
+      <div>Loading submissions...</div>
+    </div>
+  </div>
+</div>
+
+<!-- Map modal -->
+<div class="modal-overlay" id="modal-overlay" onclick="closeModal(event)">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title" id="modal-title">—</div>
+      <button class="modal-close" onclick="closeMapModal()">×</button>
+    </div>
+    <div id="modal-map"></div>
+  </div>
+</div>
+
+<footer>
+  Built with <a href="https://github.com/emuehlstein/hillshade-generator">hillgen</a>.
+  Terrain data: USGS 3DEP, Indiana IGIC, Wisconsin DNR.
+</footer>
+
+<script>
+const BUCKET_BASE = 'https://scriptedrelief.com';
+const GALLERY_PREFIX = `${BUCKET_BASE}/gallery/`;
+
+// ── PMTiles protocol ───────────────────────────────────────────────────────
+const protocol = new pmtiles.Protocol();
+L.PM = protocol;
+if (window.L) {
+  protocol.add = (url, tile, done) => {
+    // handled by leaflet-pmtiles below
+  };
+}
+
+// ── Load gallery entries ───────────────────────────────────────────────────
+let allEntries = [];
+let modalMap = null;
+
+async function loadGallery() {
+  try {
+    // Fetch S3 listing of gallery/*.json sidecar files
+    const listUrl = `https://scriptedrelief.s3.us-east-2.amazonaws.com/?list-type=2&prefix=gallery/&delimiter=/`;
+    const res = await fetch(listUrl);
+    if (!res.ok) throw new Error(`S3 list failed: ${res.status}`);
+    const xml = await res.text();
+
+    // Parse XML key list
+    const keys = [...xml.matchAll(/<Key>([^<]+\.json)<\/Key>/g)]
+      .map(m => m[1])
+      .filter(k => k !== 'gallery/catalog.json'); // skip curator catalog if present
+
+    if (keys.length === 0) {
+      showEmpty();
+      return;
+    }
+
+    // Fetch each entry JSON
+    const entries = await Promise.all(
+      keys.map(async key => {
+        try {
+          const r = await fetch(`${BUCKET_BASE}/${key}`);
+          if (!r.ok) return null;
+          const data = await r.json();
+          data._key = key;
+          return data;
+        } catch { return null; }
+      })
+    );
+
+    allEntries = entries
+      .filter(Boolean)
+      .sort((a, b) => (b.submitted || '').localeCompare(a.submitted || ''));
+
+    renderGallery(allEntries);
+  } catch (err) {
+    console.error('Gallery load failed:', err);
+    showEmpty();
+  }
+}
+
+function renderGallery(entries) {
+  const grid = document.getElementById('gallery-grid');
+  const count = document.getElementById('gallery-count');
+
+  if (entries.length === 0) {
+    showEmpty();
+    return;
+  }
+
+  count.textContent = `${entries.length} submission${entries.length === 1 ? '' : 's'}`;
+
+  grid.innerHTML = entries.map((e, i) => `
+    <div class="gallery-card" onclick="openMapModal(${i})">
+      ${e.preview
+        ? `<img class="card-thumb" src="${e.preview}" alt="${e.title || 'hillshade'}" loading="lazy">`
+        : `<div class="card-thumb-placeholder">⛰</div>`}
+      <div class="card-body">
+        <div class="card-title">${escHtml(e.title || 'Untitled')}</div>
+        ${e.caption ? `<div class="card-caption">${escHtml(e.caption)}</div>` : ''}
+        <span class="card-view-btn">View map →</span>
+        <div class="card-footer">
+          <span class="card-author">${escHtml(e.author || 'anonymous')}</span>
+          <span class="card-size">${e.size_mb ? e.size_mb + ' MB' : ''}</span>
+        </div>
+      </div>
+    </div>
+  `).join('');
+}
+
+function showEmpty() {
+  const grid = document.getElementById('gallery-grid');
+  const count = document.getElementById('gallery-count');
+  count.textContent = '0 submissions';
+  grid.innerHTML = `
+    <div class="state-empty" style="grid-column:1/-1">
+      <h3>No submissions yet</h3>
+      <p>Be the first to share a hillshade!</p>
+    </div>`;
+}
+
+// ── Map modal ─────────────────────────────────────────────────────────────
+function openMapModal(index) {
+  const entry = allEntries[index];
+  if (!entry?.pmtiles) return;
+
+  document.getElementById('modal-title').textContent =
+    (entry.title || 'Map') + (entry.author ? ` · ${entry.author}` : '');
+  document.getElementById('modal-overlay').classList.add('open');
+
+  // Small delay to let the modal render before initializing the map
+  setTimeout(() => initModalMap(entry), 50);
+}
+
+function initModalMap(entry) {
+  if (modalMap) {
+    modalMap.remove();
+    modalMap = null;
+  }
+
+  const container = document.getElementById('modal-map');
+  container.innerHTML = '';
+
+  modalMap = L.map(container, { zoomControl: true });
+
+  // PMTiles layer
+  const pmt = new pmtiles.PMTiles(entry.pmtiles);
+  const layer = pmtiles.leafletRasterLayer(pmt, {
+    attribution: entry.author ? `© ${entry.author}` : '',
+    maxNativeZoom: 18,
+    maxZoom: 20,
+  });
+  layer.addTo(modalMap);
+
+  // Base OSM layer underneath
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    attribution: '© OpenStreetMap',
+    opacity: 0.25,
+    maxZoom: 20,
+  }).addTo(modalMap);
+
+  // Fit to PMTiles bounds if available
+  pmt.getHeader().then(header => {
+    if (header.minLon !== undefined) {
+      const bounds = L.latLngBounds(
+        [header.minLat, header.minLon],
+        [header.maxLat, header.maxLon]
+      );
+      modalMap.fitBounds(bounds, { padding: [20, 20] });
+    } else {
+      modalMap.setView([39.5, -86.0], 8); // Indiana default
+    }
+  }).catch(() => modalMap.setView([39.5, -86.0], 8));
+}
+
+function closeMapModal() {
+  document.getElementById('modal-overlay').classList.remove('open');
+  if (modalMap) { modalMap.remove(); modalMap = null; }
+}
+
+function closeModal(e) {
+  if (e.target === document.getElementById('modal-overlay')) closeModal2();
+}
+function closeModal2() { closeMapModal(); }
+
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape') closeMapModal();
+});
+
+// ── Utilities ─────────────────────────────────────────────────────────────
+function escHtml(s) {
+  return String(s)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
+}
+
+function copyCode() {
+  const text = document.getElementById('code-export').innerText;
+  navigator.clipboard.writeText(text).then(() => {
+    const btn = document.querySelector('.copy-btn');
+    btn.textContent = 'copied!';
+    setTimeout(() => btn.textContent = 'copy', 2000);
+  });
+}
+
+// ── Boot ──────────────────────────────────────────────────────────────────
+// Add leaflet-pmtiles raster layer support
+(function patchLeafletPmtiles() {
+  if (!window.pmtiles || !window.L) return;
+  pmtiles.leafletRasterLayer = function(source, options) {
+    const opts = Object.assign({ tileSize: 256 }, options);
+    return L.tileLayer.canvas(opts);
+  };
+
+  // Proper PMTiles raster layer using canvas tiles
+  pmtiles.leafletRasterLayer = function(source, options) {
+    const TileLayer = L.TileLayer.extend({
+      initialize: function(source, opts) {
+        this._source = source;
+        L.TileLayer.prototype.initialize.call(this, '', opts);
+      },
+      createTile: function(coords, done) {
+        const img = document.createElement('img');
+        const zoom = coords.z, x = coords.x, y = coords.y;
+        this._source.getZxy(zoom, x, y).then(({data}) => {
+          if (!data) { done(null, img); return; }
+          const blob = new Blob([data]);
+          img.src = URL.createObjectURL(blob);
+          img.onload = () => { URL.revokeObjectURL(img.src); done(null, img); };
+          img.onerror = () => done(null, img);
+        }).catch(() => done(null, img));
+        return img;
+      }
+    });
+    return new TileLayer(source, options);
+  };
+})();
+
+loadGallery();
+</script>
+</body>
+</html>
