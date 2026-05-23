@@ -1,43 +1,2860 @@
 {
-  "generated": "2026-05-18T20:05:00Z",
+  "generated": "2026-05-23T13:22:39Z",
   "layers": [
+    {
+      "area": "indiana-dunes",
+      "name": "Indiana Dunes",
+      "theme": "alpine-glacier",
+      "description": "Deep indigo valleys to teal forests to icy white summit",
+      "exaggeration": 9.0,
+      "dem_source": "USGS 3DEP 1/3 arc-second",
+      "zoom": [
+        10,
+        16
+      ],
+      "bounds": [
+        -87.1,
+        41.6,
+        -87.0,
+        41.72
+      ],
+      "center": [
+        -87.05,
+        41.66
+      ],
+      "pmtiles": "tiles/indiana-dunes/3dep_n41.66_w87.05_4326_alpine-glacier_9.0x.pmtiles",
+      "preview": "previews/indiana-dunes/alpine-glacier.png",
+      "size_mb": 16.9,
+      "tags": [
+        "great-lakes",
+        "flat",
+        "elevation",
+        "alpine"
+      ]
+    },
+    {
+      "area": "indiana-dunes",
+      "name": "Indiana Dunes",
+      "theme": "aurora",
+      "description": "Deep space to midnight blue to electric teal to neon green",
+      "exaggeration": 9.0,
+      "dem_source": "USGS 3DEP 1/3 arc-second",
+      "zoom": [
+        10,
+        16
+      ],
+      "bounds": [
+        -87.1,
+        41.6,
+        -87.0,
+        41.72
+      ],
+      "center": [
+        -87.05,
+        41.66
+      ],
+      "pmtiles": "tiles/indiana-dunes/3dep_n41.66_w87.05_4326_aurora_9.0x.pmtiles",
+      "preview": "previews/indiana-dunes/aurora.png",
+      "size_mb": 14.9,
+      "tags": [
+        "experimental",
+        "great-lakes",
+        "flat",
+        "elevation"
+      ]
+    },
+    {
+      "area": "indiana-dunes",
+      "name": "Indiana Dunes",
+      "theme": "cool",
+      "description": "Desaturated blue-grey, cartographic",
+      "exaggeration": 9.0,
+      "dem_source": "USGS 3DEP 1/3 arc-second",
+      "zoom": [
+        10,
+        16
+      ],
+      "bounds": [
+        -87.1,
+        41.6,
+        -87.0,
+        41.72
+      ],
+      "center": [
+        -87.05,
+        41.66
+      ],
+      "pmtiles": "tiles/indiana-dunes/3dep_n41.66_w87.05_4326_cool_9.0x.pmtiles",
+      "preview": "previews/indiana-dunes/cool.png",
+      "size_mb": 18.1,
+      "tags": [
+        "cool",
+        "great-lakes",
+        "flat",
+        "cartographic"
+      ]
+    },
+    {
+      "area": "indiana-dunes",
+      "name": "Indiana Dunes",
+      "theme": "cool-elevation",
+      "description": "Elevation-mapped cool blue-grey",
+      "exaggeration": 9.0,
+      "dem_source": "USGS 3DEP 1/3 arc-second",
+      "zoom": [
+        10,
+        16
+      ],
+      "bounds": [
+        -87.1,
+        41.6,
+        -87.0,
+        41.72
+      ],
+      "center": [
+        -87.05,
+        41.66
+      ],
+      "pmtiles": "tiles/indiana-dunes/3dep_n41.66_w87.05_4326_cool-elevation_9.0x.pmtiles",
+      "preview": "previews/indiana-dunes/cool-elevation.png",
+      "size_mb": 14.4,
+      "tags": [
+        "cool",
+        "great-lakes",
+        "flat",
+        "elevation"
+      ]
+    },
+    {
+      "area": "indiana-dunes",
+      "name": "Indiana Dunes",
+      "theme": "daylight",
+      "description": "Warm grey with soft shadows",
+      "exaggeration": 9.0,
+      "dem_source": "USGS 3DEP 1/3 arc-second",
+      "zoom": [
+        10,
+        16
+      ],
+      "bounds": [
+        -87.1,
+        41.6,
+        -87.0,
+        41.72
+      ],
+      "center": [
+        -87.05,
+        41.66
+      ],
+      "pmtiles": "tiles/indiana-dunes/3dep_n41.66_w87.05_4326_daylight_9.0x.pmtiles",
+      "preview": "previews/indiana-dunes/daylight.png",
+      "size_mb": 18.0,
+      "tags": [
+        "basemap",
+        "great-lakes",
+        "light",
+        "flat"
+      ]
+    },
+    {
+      "area": "indiana-dunes",
+      "name": "Indiana Dunes",
+      "theme": "desert-sun",
+      "description": "Rust canyons to sandy mesas to bleached white peaks",
+      "exaggeration": 9.0,
+      "dem_source": "USGS 3DEP 1/3 arc-second",
+      "zoom": [
+        10,
+        16
+      ],
+      "bounds": [
+        -87.1,
+        41.6,
+        -87.0,
+        41.72
+      ],
+      "center": [
+        -87.05,
+        41.66
+      ],
+      "pmtiles": "tiles/indiana-dunes/3dep_n41.66_w87.05_4326_desert-sun_9.0x.pmtiles",
+      "preview": "previews/indiana-dunes/desert-sun.png",
+      "size_mb": 16.7,
+      "tags": [
+        "experimental",
+        "great-lakes",
+        "flat",
+        "elevation"
+      ]
+    },
+    {
+      "area": "indiana-dunes",
+      "name": "Indiana Dunes",
+      "theme": "flat-terrain",
+      "description": "Heavy 9x exaggeration for subtle landscapes",
+      "exaggeration": 9.0,
+      "dem_source": "USGS 3DEP 1/3 arc-second",
+      "zoom": [
+        10,
+        16
+      ],
+      "bounds": [
+        -87.1,
+        41.6,
+        -87.0,
+        41.72
+      ],
+      "center": [
+        -87.05,
+        41.66
+      ],
+      "pmtiles": "tiles/indiana-dunes/3dep_n41.66_w87.05_4326_flat-terrain_9.0x.pmtiles",
+      "preview": "previews/indiana-dunes/flat-terrain.png",
+      "size_mb": 16.6,
+      "tags": [
+        "great-lakes",
+        "flat",
+        "dark"
+      ]
+    },
+    {
+      "area": "indiana-dunes",
+      "name": "Indiana Dunes",
+      "theme": "forest-canopy",
+      "description": "Near-black forest floor to dark green to bright canopy",
+      "exaggeration": 9.0,
+      "dem_source": "USGS 3DEP 1/3 arc-second",
+      "zoom": [
+        10,
+        16
+      ],
+      "bounds": [
+        -87.1,
+        41.6,
+        -87.0,
+        41.72
+      ],
+      "center": [
+        -87.05,
+        41.66
+      ],
+      "pmtiles": "tiles/indiana-dunes/3dep_n41.66_w87.05_4326_forest-canopy_9.0x.pmtiles",
+      "preview": "previews/indiana-dunes/forest-canopy.png",
+      "size_mb": 13.2,
+      "tags": [
+        "experimental",
+        "great-lakes",
+        "flat",
+        "elevation"
+      ]
+    },
+    {
+      "area": "indiana-dunes",
+      "name": "Indiana Dunes",
+      "theme": "grayscale",
+      "description": "Pure hillshade, no color \u2014 use as a base layer",
+      "exaggeration": 9.0,
+      "dem_source": "USGS 3DEP 1/3 arc-second",
+      "zoom": [
+        10,
+        16
+      ],
+      "bounds": [
+        -87.1,
+        41.6,
+        -87.0,
+        41.72
+      ],
+      "center": [
+        -87.05,
+        41.66
+      ],
+      "pmtiles": "tiles/indiana-dunes/3dep_n41.66_w87.05_4326_grayscale_9.0x.pmtiles",
+      "preview": "previews/indiana-dunes/grayscale.png",
+      "size_mb": 16.7,
+      "tags": [
+        "gray",
+        "great-lakes",
+        "base",
+        "flat"
+      ]
+    },
+    {
+      "area": "indiana-dunes",
+      "name": "Indiana Dunes",
+      "theme": "infrared",
+      "description": "False-color thermal: black to purple to cyan to yellow to red",
+      "exaggeration": 9.0,
+      "dem_source": "USGS 3DEP 1/3 arc-second",
+      "zoom": [
+        10,
+        16
+      ],
+      "bounds": [
+        -87.1,
+        41.6,
+        -87.0,
+        41.72
+      ],
+      "center": [
+        -87.05,
+        41.66
+      ],
+      "pmtiles": "tiles/indiana-dunes/3dep_n41.66_w87.05_4326_infrared_9.0x.pmtiles",
+      "preview": "previews/indiana-dunes/infrared.png",
+      "size_mb": 16.8,
+      "tags": [
+        "experimental",
+        "great-lakes",
+        "flat",
+        "elevation"
+      ]
+    },
+    {
+      "area": "indiana-dunes",
+      "name": "Indiana Dunes",
+      "theme": "magma",
+      "description": "Black to deep purple to red to orange to pale yellow",
+      "exaggeration": 9.0,
+      "dem_source": "USGS 3DEP 1/3 arc-second",
+      "zoom": [
+        10,
+        16
+      ],
+      "bounds": [
+        -87.1,
+        41.6,
+        -87.0,
+        41.72
+      ],
+      "center": [
+        -87.05,
+        41.66
+      ],
+      "pmtiles": "tiles/indiana-dunes/3dep_n41.66_w87.05_4326_magma_9.0x.pmtiles",
+      "preview": "previews/indiana-dunes/magma.png",
+      "size_mb": 14.3,
+      "tags": [
+        "experimental",
+        "great-lakes",
+        "flat",
+        "elevation"
+      ]
+    },
+    {
+      "area": "indiana-dunes",
+      "name": "Indiana Dunes",
+      "theme": "midnight",
+      "description": "Deep blue-black with subtle terrain detail",
+      "exaggeration": 9.0,
+      "dem_source": "USGS 3DEP 1/3 arc-second",
+      "zoom": [
+        10,
+        16
+      ],
+      "bounds": [
+        -87.1,
+        41.6,
+        -87.0,
+        41.72
+      ],
+      "center": [
+        -87.05,
+        41.66
+      ],
+      "pmtiles": "tiles/indiana-dunes/3dep_n41.66_w87.05_4326_midnight_9.0x.pmtiles",
+      "preview": "previews/indiana-dunes/midnight.png",
+      "size_mb": 16.6,
+      "tags": [
+        "basemap",
+        "great-lakes",
+        "flat",
+        "dark"
+      ]
+    },
+    {
+      "area": "indiana-dunes",
+      "name": "Indiana Dunes",
+      "theme": "ocean-depth",
+      "description": "Deep ocean blue at valleys to pale aqua at summit",
+      "exaggeration": 9.0,
+      "dem_source": "USGS 3DEP 1/3 arc-second",
+      "zoom": [
+        10,
+        16
+      ],
+      "bounds": [
+        -87.1,
+        41.6,
+        -87.0,
+        41.72
+      ],
+      "center": [
+        -87.05,
+        41.66
+      ],
+      "pmtiles": "tiles/indiana-dunes/3dep_n41.66_w87.05_4326_ocean-depth_9.0x.pmtiles",
+      "preview": "previews/indiana-dunes/ocean-depth.png",
+      "size_mb": 15.5,
+      "tags": [
+        "experimental",
+        "great-lakes",
+        "flat",
+        "elevation"
+      ]
+    },
+    {
+      "area": "indiana-dunes",
+      "name": "Indiana Dunes",
+      "theme": "simmon",
+      "description": "Robert Simmon's composite technique with aspect depth cues",
+      "exaggeration": 9.0,
+      "dem_source": "USGS 3DEP 1/3 arc-second",
+      "zoom": [
+        10,
+        16
+      ],
+      "bounds": [
+        -87.1,
+        41.6,
+        -87.0,
+        41.72
+      ],
+      "center": [
+        -87.05,
+        41.66
+      ],
+      "pmtiles": "tiles/indiana-dunes/3dep_n41.66_w87.05_4326_simmon_9.0x.pmtiles",
+      "preview": "previews/indiana-dunes/simmon.png",
+      "size_mb": 16.6,
+      "tags": [
+        "great-lakes",
+        "publication",
+        "flat",
+        "dark"
+      ]
+    },
+    {
+      "area": "indiana-dunes",
+      "name": "Indiana Dunes",
+      "theme": "sunset-ridge",
+      "description": "Deep violet night to rose to amber to pale gold summit",
+      "exaggeration": 9.0,
+      "dem_source": "USGS 3DEP 1/3 arc-second",
+      "zoom": [
+        10,
+        16
+      ],
+      "bounds": [
+        -87.1,
+        41.6,
+        -87.0,
+        41.72
+      ],
+      "center": [
+        -87.05,
+        41.66
+      ],
+      "pmtiles": "tiles/indiana-dunes/3dep_n41.66_w87.05_4326_sunset-ridge_9.0x.pmtiles",
+      "preview": "previews/indiana-dunes/sunset-ridge.png",
+      "size_mb": 16.5,
+      "tags": [
+        "experimental",
+        "great-lakes",
+        "flat",
+        "elevation"
+      ]
+    },
+    {
+      "area": "indiana-dunes",
+      "name": "Indiana Dunes",
+      "theme": "tactical",
+      "description": "Muted green-brown, high contrast",
+      "exaggeration": 9.0,
+      "dem_source": "USGS 3DEP 1/3 arc-second",
+      "zoom": [
+        10,
+        16
+      ],
+      "bounds": [
+        -87.1,
+        41.6,
+        -87.0,
+        41.72
+      ],
+      "center": [
+        -87.05,
+        41.66
+      ],
+      "pmtiles": "tiles/indiana-dunes/3dep_n41.66_w87.05_4326_tactical_9.0x.pmtiles",
+      "preview": "previews/indiana-dunes/tactical.png",
+      "size_mb": 14.6,
+      "tags": [
+        "tactical",
+        "great-lakes",
+        "flat",
+        "dark"
+      ]
+    },
+    {
+      "area": "indiana-dunes",
+      "name": "Indiana Dunes",
+      "theme": "topo-classic",
+      "description": "USGS hypsometric: green lowlands to tan to brown to grey to white",
+      "exaggeration": 9.0,
+      "dem_source": "USGS 3DEP 1/3 arc-second",
+      "zoom": [
+        10,
+        16
+      ],
+      "bounds": [
+        -87.1,
+        41.6,
+        -87.0,
+        41.72
+      ],
+      "center": [
+        -87.05,
+        41.66
+      ],
+      "pmtiles": "tiles/indiana-dunes/3dep_n41.66_w87.05_4326_topo-classic_9.0x.pmtiles",
+      "preview": "previews/indiana-dunes/topo-classic.png",
+      "size_mb": 17.9,
+      "tags": [
+        "great-lakes",
+        "flat",
+        "elevation",
+        "cartographic"
+      ]
+    },
+    {
+      "area": "indiana-dunes",
+      "name": "Indiana Dunes",
+      "theme": "toxic",
+      "description": "Dark olive to poison green to acid yellow",
+      "exaggeration": 9.0,
+      "dem_source": "USGS 3DEP 1/3 arc-second",
+      "zoom": [
+        10,
+        16
+      ],
+      "bounds": [
+        -87.1,
+        41.6,
+        -87.0,
+        41.72
+      ],
+      "center": [
+        -87.05,
+        41.66
+      ],
+      "pmtiles": "tiles/indiana-dunes/3dep_n41.66_w87.05_4326_toxic_9.0x.pmtiles",
+      "preview": "previews/indiana-dunes/toxic.png",
+      "size_mb": 14.3,
+      "tags": [
+        "experimental",
+        "great-lakes",
+        "flat",
+        "elevation"
+      ]
+    },
+    {
+      "area": "indiana-dunes",
+      "name": "Indiana Dunes",
+      "theme": "vivid",
+      "description": "Saturated blue to green to orange to red",
+      "exaggeration": 9.0,
+      "dem_source": "USGS 3DEP 1/3 arc-second",
+      "zoom": [
+        10,
+        16
+      ],
+      "bounds": [
+        -87.1,
+        41.6,
+        -87.0,
+        41.72
+      ],
+      "center": [
+        -87.05,
+        41.66
+      ],
+      "pmtiles": "tiles/indiana-dunes/3dep_n41.66_w87.05_4326_vivid_9.0x.pmtiles",
+      "preview": "previews/indiana-dunes/vivid.png",
+      "size_mb": 18.5,
+      "tags": [
+        "vivid",
+        "great-lakes",
+        "flat",
+        "dark"
+      ]
+    },
+    {
+      "area": "indiana-dunes",
+      "name": "Indiana Dunes",
+      "theme": "vivid-elevation",
+      "description": "Elevation-mapped vivid: blue low to green to orange to red high",
+      "exaggeration": 9.0,
+      "dem_source": "USGS 3DEP 1/3 arc-second",
+      "zoom": [
+        10,
+        16
+      ],
+      "bounds": [
+        -87.1,
+        41.6,
+        -87.0,
+        41.72
+      ],
+      "center": [
+        -87.05,
+        41.66
+      ],
+      "pmtiles": "tiles/indiana-dunes/3dep_n41.66_w87.05_4326_vivid-elevation_9.0x.pmtiles",
+      "preview": "previews/indiana-dunes/vivid-elevation.png",
+      "size_mb": 15.6,
+      "tags": [
+        "vivid",
+        "great-lakes",
+        "flat",
+        "elevation"
+      ]
+    },
+    {
+      "area": "indiana-dunes",
+      "name": "Indiana Dunes",
+      "theme": "volcanic-ash",
+      "description": "Charcoal base to warm ash grey to bone white",
+      "exaggeration": 9.0,
+      "dem_source": "USGS 3DEP 1/3 arc-second",
+      "zoom": [
+        10,
+        16
+      ],
+      "bounds": [
+        -87.1,
+        41.6,
+        -87.0,
+        41.72
+      ],
+      "center": [
+        -87.05,
+        41.66
+      ],
+      "pmtiles": "tiles/indiana-dunes/3dep_n41.66_w87.05_4326_volcanic-ash_9.0x.pmtiles",
+      "preview": "previews/indiana-dunes/volcanic-ash.png",
+      "size_mb": 14.4,
+      "tags": [
+        "experimental",
+        "great-lakes",
+        "flat",
+        "elevation"
+      ]
+    },
+    {
+      "area": "mauna-kea",
+      "name": "Mauna Kea",
+      "theme": "alpine-glacier",
+      "description": "Deep indigo valleys to teal forests to icy white summit",
+      "exaggeration": 3.0,
+      "dem_source": "USGS 3DEP 1/3 arc-second",
+      "zoom": [
+        10,
+        14
+      ],
+      "bounds": [
+        -155.6,
+        19.7,
+        -155.35,
+        19.95
+      ],
+      "center": [
+        -155.47,
+        19.82
+      ],
+      "pmtiles": "tiles/mauna-kea/3dep_n19.82_w155.47_4326_alpine-glacier_3.0x.pmtiles",
+      "preview": "previews/mauna-kea/alpine-glacier.png",
+      "size_mb": 99.6,
+      "tags": [
+        "alpine",
+        "elevation",
+        "hawaii",
+        "volcano"
+      ]
+    },
+    {
+      "area": "mauna-kea",
+      "name": "Mauna Kea",
+      "theme": "aurora",
+      "description": "Deep space to midnight blue to electric teal to neon green",
+      "exaggeration": 3.0,
+      "dem_source": "USGS 3DEP 1/3 arc-second",
+      "zoom": [
+        10,
+        14
+      ],
+      "bounds": [
+        -155.6,
+        19.7,
+        -155.35,
+        19.95
+      ],
+      "center": [
+        -155.47,
+        19.82
+      ],
+      "pmtiles": "tiles/mauna-kea/3dep_n19.82_w155.47_4326_aurora_3.0x.pmtiles",
+      "preview": "previews/mauna-kea/aurora.png",
+      "size_mb": 86.0,
+      "tags": [
+        "experimental",
+        "elevation",
+        "hawaii",
+        "volcano"
+      ]
+    },
+    {
+      "area": "mauna-kea",
+      "name": "Mauna Kea",
+      "theme": "cool",
+      "description": "Desaturated blue-grey, cartographic",
+      "exaggeration": 3.0,
+      "dem_source": "USGS 3DEP 1/3 arc-second",
+      "zoom": [
+        10,
+        14
+      ],
+      "bounds": [
+        -155.6,
+        19.7,
+        -155.35,
+        19.95
+      ],
+      "center": [
+        -155.47,
+        19.82
+      ],
+      "pmtiles": "tiles/mauna-kea/3dep_n19.82_w155.47_4326_cool_3.0x.pmtiles",
+      "preview": "previews/mauna-kea/cool.png",
+      "size_mb": 109.4,
+      "tags": [
+        "cool",
+        "cartographic",
+        "hawaii",
+        "volcano"
+      ]
+    },
+    {
+      "area": "mauna-kea",
+      "name": "Mauna Kea",
+      "theme": "daylight",
+      "description": "Warm grey with soft shadows",
+      "exaggeration": 3.0,
+      "dem_source": "USGS 3DEP 1/3 arc-second",
+      "zoom": [
+        10,
+        14
+      ],
+      "bounds": [
+        -155.6,
+        19.7,
+        -155.35,
+        19.95
+      ],
+      "center": [
+        -155.47,
+        19.82
+      ],
+      "pmtiles": "tiles/mauna-kea/3dep_n19.82_w155.47_4326_daylight_3.0x.pmtiles",
+      "preview": "previews/mauna-kea/daylight.png",
+      "size_mb": 110.6,
+      "tags": [
+        "basemap",
+        "light",
+        "hawaii",
+        "volcano"
+      ]
+    },
+    {
+      "area": "mauna-kea",
+      "name": "Mauna Kea",
+      "theme": "desert-sun",
+      "description": "Rust canyons to sandy mesas to bleached white peaks",
+      "exaggeration": 3.0,
+      "dem_source": "USGS 3DEP 1/3 arc-second",
+      "zoom": [
+        10,
+        14
+      ],
+      "bounds": [
+        -155.6,
+        19.7,
+        -155.35,
+        19.95
+      ],
+      "center": [
+        -155.47,
+        19.82
+      ],
+      "pmtiles": "tiles/mauna-kea/3dep_n19.82_w155.47_4326_desert-sun_3.0x.pmtiles",
+      "preview": "previews/mauna-kea/desert-sun.png",
+      "size_mb": 99.8,
+      "tags": [
+        "experimental",
+        "elevation",
+        "hawaii",
+        "volcano"
+      ]
+    },
+    {
+      "area": "mauna-kea",
+      "name": "Mauna Kea",
+      "theme": "infrared",
+      "description": "False-color thermal: black to purple to cyan to yellow to red",
+      "exaggeration": 3.0,
+      "dem_source": "USGS 3DEP 1/3 arc-second",
+      "zoom": [
+        10,
+        14
+      ],
+      "bounds": [
+        -155.6,
+        19.7,
+        -155.35,
+        19.95
+      ],
+      "center": [
+        -155.47,
+        19.82
+      ],
+      "pmtiles": "tiles/mauna-kea/3dep_n19.82_w155.47_4326_infrared_3.0x.pmtiles",
+      "preview": "previews/mauna-kea/infrared.png",
+      "size_mb": 92.2,
+      "tags": [
+        "experimental",
+        "elevation",
+        "hawaii",
+        "volcano"
+      ]
+    },
+    {
+      "area": "mauna-kea",
+      "name": "Mauna Kea",
+      "theme": "magma",
+      "description": "Black to deep purple to red to orange to pale yellow",
+      "exaggeration": 3.0,
+      "dem_source": "USGS 3DEP 1/3 arc-second",
+      "zoom": [
+        10,
+        14
+      ],
+      "bounds": [
+        -155.6,
+        19.7,
+        -155.35,
+        19.95
+      ],
+      "center": [
+        -155.47,
+        19.82
+      ],
+      "pmtiles": "tiles/mauna-kea/3dep_n19.82_w155.47_4326_magma_3.0x.pmtiles",
+      "preview": "previews/mauna-kea/magma.png",
+      "size_mb": 85.6,
+      "tags": [
+        "experimental",
+        "elevation",
+        "hawaii",
+        "volcano"
+      ]
+    },
+    {
+      "area": "mauna-kea",
+      "name": "Mauna Kea",
+      "theme": "midnight",
+      "description": "Deep blue-black with subtle terrain detail",
+      "exaggeration": 3.0,
+      "dem_source": "USGS 3DEP 1/3 arc-second",
+      "zoom": [
+        10,
+        14
+      ],
+      "bounds": [
+        -155.6,
+        19.7,
+        -155.35,
+        19.95
+      ],
+      "center": [
+        -155.47,
+        19.82
+      ],
+      "pmtiles": "tiles/mauna-kea/3dep_n19.82_w155.47_4326_midnight_3.0x.pmtiles",
+      "preview": "previews/mauna-kea/midnight.png",
+      "size_mb": 102.8,
+      "tags": [
+        "basemap",
+        "dark",
+        "hawaii",
+        "volcano"
+      ]
+    },
+    {
+      "area": "mauna-kea",
+      "name": "Mauna Kea",
+      "theme": "simmon",
+      "description": "Robert Simmon's composite technique with aspect depth cues",
+      "exaggeration": 3.0,
+      "dem_source": "USGS 3DEP 1/3 arc-second",
+      "zoom": [
+        10,
+        14
+      ],
+      "bounds": [
+        -155.6,
+        19.7,
+        -155.35,
+        19.95
+      ],
+      "center": [
+        -155.47,
+        19.82
+      ],
+      "pmtiles": "tiles/mauna-kea/3dep_n19.82_w155.47_4326_simmon_3.0x.pmtiles",
+      "preview": "previews/mauna-kea/simmon.png",
+      "size_mb": 102.8,
+      "tags": [
+        "publication",
+        "dark",
+        "hawaii",
+        "volcano"
+      ]
+    },
+    {
+      "area": "mauna-kea",
+      "name": "Mauna Kea",
+      "theme": "tactical",
+      "description": "Muted green-brown, high contrast",
+      "exaggeration": 3.0,
+      "dem_source": "USGS 3DEP 1/3 arc-second",
+      "zoom": [
+        10,
+        14
+      ],
+      "bounds": [
+        -155.6,
+        19.7,
+        -155.35,
+        19.95
+      ],
+      "center": [
+        -155.47,
+        19.82
+      ],
+      "pmtiles": "tiles/mauna-kea/3dep_n19.82_w155.47_4326_tactical_3.0x.pmtiles",
+      "preview": "previews/mauna-kea/tactical.png",
+      "size_mb": 86.3,
+      "tags": [
+        "tactical",
+        "dark",
+        "hawaii",
+        "volcano"
+      ]
+    },
+    {
+      "area": "mauna-kea",
+      "name": "Mauna Kea",
+      "theme": "vivid",
+      "description": "Saturated blue to green to orange to red",
+      "exaggeration": 3.0,
+      "dem_source": "USGS 3DEP 1/3 arc-second",
+      "zoom": [
+        10,
+        14
+      ],
+      "bounds": [
+        -155.6,
+        19.7,
+        -155.35,
+        19.95
+      ],
+      "center": [
+        -155.47,
+        19.82
+      ],
+      "pmtiles": "tiles/mauna-kea/3dep_n19.82_w155.47_4326_vivid_3.0x.pmtiles",
+      "preview": "previews/mauna-kea/vivid.png",
+      "size_mb": 121.3,
+      "tags": [
+        "vivid",
+        "dark",
+        "hawaii",
+        "volcano"
+      ]
+    },
+    {
+      "area": "mt-rainier-3dep",
+      "name": "Mt. Rainier (3DEP)",
+      "theme": "alpine-glacier",
+      "description": "Deep indigo valleys to teal forests to icy white summit",
+      "exaggeration": 3.0,
+      "dem_source": "USGS 3DEP 1/3 arc-second",
+      "zoom": [
+        10,
+        16
+      ],
+      "bounds": [
+        -122.0,
+        46.7,
+        -121.5,
+        47.0
+      ],
+      "center": [
+        -121.76,
+        46.85
+      ],
+      "pmtiles": "tiles/mt-rainier/3dep_n46.85_w121.76_4326_alpine-glacier_3.0x.pmtiles",
+      "preview": "previews/mt-rainier/alpine-glacier.png",
+      "size_mb": 12790.1,
+      "tags": [
+        "cascade",
+        "volcano",
+        "alpine",
+        "elevation",
+        "glacier"
+      ]
+    },
+    {
+      "area": "mt-rainier-3dep",
+      "name": "Mt. Rainier (3DEP)",
+      "theme": "aurora",
+      "description": "Deep space to midnight blue to electric teal to neon green",
+      "exaggeration": 3.0,
+      "dem_source": "USGS 3DEP 1/3 arc-second",
+      "zoom": [
+        10,
+        16
+      ],
+      "bounds": [
+        -122.0,
+        46.7,
+        -121.5,
+        47.0
+      ],
+      "center": [
+        -121.76,
+        46.85
+      ],
+      "pmtiles": "tiles/mt-rainier/3dep_n46.85_w121.76_4326_aurora_3.0x.pmtiles",
+      "preview": "previews/mt-rainier/aurora.png",
+      "size_mb": 10459.5,
+      "tags": [
+        "experimental",
+        "cascade",
+        "volcano",
+        "elevation",
+        "glacier"
+      ]
+    },
+    {
+      "area": "mt-rainier-3dep",
+      "name": "Mt. Rainier (3DEP)",
+      "theme": "cool",
+      "description": "Desaturated blue-grey, cartographic",
+      "exaggeration": 3.0,
+      "dem_source": "USGS 3DEP 1/3 arc-second",
+      "zoom": [
+        10,
+        16
+      ],
+      "bounds": [
+        -122.0,
+        46.7,
+        -121.5,
+        47.0
+      ],
+      "center": [
+        -121.76,
+        46.85
+      ],
+      "pmtiles": "tiles/mt-rainier/3dep_n46.85_w121.76_4326_cool_3.0x.pmtiles",
+      "preview": "previews/mt-rainier/cool.png",
+      "size_mb": 11778.0,
+      "tags": [
+        "cascade",
+        "volcano",
+        "cool",
+        "cartographic",
+        "glacier"
+      ]
+    },
+    {
+      "area": "mt-rainier-3dep",
+      "name": "Mt. Rainier (3DEP)",
+      "theme": "cool-elevation",
+      "description": "Elevation-mapped cool blue-grey",
+      "exaggeration": 3.0,
+      "dem_source": "USGS 3DEP 1/3 arc-second",
+      "zoom": [
+        10,
+        16
+      ],
+      "bounds": [
+        -122.0,
+        46.7,
+        -121.5,
+        47.0
+      ],
+      "center": [
+        -121.76,
+        46.85
+      ],
+      "pmtiles": "tiles/mt-rainier/3dep_n46.85_w121.76_4326_cool-elevation_3.0x.pmtiles",
+      "preview": "previews/mt-rainier/cool-elevation.png",
+      "size_mb": 11644.6,
+      "tags": [
+        "cascade",
+        "volcano",
+        "cool",
+        "elevation",
+        "glacier"
+      ]
+    },
+    {
+      "area": "mt-rainier-3dep",
+      "name": "Mt. Rainier (3DEP)",
+      "theme": "daylight",
+      "description": "Warm grey with soft shadows",
+      "exaggeration": 3.0,
+      "dem_source": "USGS 3DEP 1/3 arc-second",
+      "zoom": [
+        10,
+        16
+      ],
+      "bounds": [
+        -122.0,
+        46.7,
+        -121.5,
+        47.0
+      ],
+      "center": [
+        -121.76,
+        46.85
+      ],
+      "pmtiles": "tiles/mt-rainier/3dep_n46.85_w121.76_4326_daylight_3.0x.pmtiles",
+      "preview": "previews/mt-rainier/daylight.png",
+      "size_mb": 14447.8,
+      "tags": [
+        "cascade",
+        "light",
+        "volcano",
+        "basemap",
+        "glacier"
+      ]
+    },
+    {
+      "area": "mt-rainier-3dep",
+      "name": "Mt. Rainier (3DEP)",
+      "theme": "desert-sun",
+      "description": "Rust canyons to sandy mesas to bleached white peaks",
+      "exaggeration": 3.0,
+      "dem_source": "USGS 3DEP 1/3 arc-second",
+      "zoom": [
+        10,
+        16
+      ],
+      "bounds": [
+        -122.0,
+        46.7,
+        -121.5,
+        47.0
+      ],
+      "center": [
+        -121.76,
+        46.85
+      ],
+      "pmtiles": "tiles/mt-rainier/3dep_n46.85_w121.76_4326_desert-sun_3.0x.pmtiles",
+      "preview": "previews/mt-rainier/desert-sun.png",
+      "size_mb": 12639.2,
+      "tags": [
+        "experimental",
+        "cascade",
+        "volcano",
+        "elevation",
+        "glacier"
+      ]
+    },
+    {
+      "area": "mt-rainier-3dep",
+      "name": "Mt. Rainier (3DEP)",
+      "theme": "flat-terrain",
+      "description": "Heavy 9x exaggeration for subtle landscapes",
+      "exaggeration": 3.0,
+      "dem_source": "USGS 3DEP 1/3 arc-second",
+      "zoom": [
+        10,
+        16
+      ],
+      "bounds": [
+        -122.0,
+        46.7,
+        -121.5,
+        47.0
+      ],
+      "center": [
+        -121.76,
+        46.85
+      ],
+      "pmtiles": "tiles/mt-rainier/3dep_n46.85_w121.76_4326_flat-terrain_3.0x.pmtiles",
+      "preview": "previews/mt-rainier/flat-terrain.png",
+      "size_mb": 12516.5,
+      "tags": [
+        "cascade",
+        "volcano",
+        "dark",
+        "glacier",
+        "flat"
+      ]
+    },
+    {
+      "area": "mt-rainier-3dep",
+      "name": "Mt. Rainier (3DEP)",
+      "theme": "forest-canopy",
+      "description": "Near-black forest floor to dark green to bright canopy",
+      "exaggeration": 3.0,
+      "dem_source": "USGS 3DEP 1/3 arc-second",
+      "zoom": [
+        10,
+        16
+      ],
+      "bounds": [
+        -122.0,
+        46.7,
+        -121.5,
+        47.0
+      ],
+      "center": [
+        -121.76,
+        46.85
+      ],
+      "pmtiles": "tiles/mt-rainier/3dep_n46.85_w121.76_4326_forest-canopy_3.0x.pmtiles",
+      "preview": "previews/mt-rainier/forest-canopy.png",
+      "size_mb": 10514.6,
+      "tags": [
+        "experimental",
+        "cascade",
+        "volcano",
+        "elevation",
+        "glacier"
+      ]
+    },
+    {
+      "area": "mt-rainier-3dep",
+      "name": "Mt. Rainier (3DEP)",
+      "theme": "grayscale",
+      "description": "Pure hillshade, no color \u2014 use as a base layer",
+      "exaggeration": 3.0,
+      "dem_source": "USGS 3DEP 1/3 arc-second",
+      "zoom": [
+        10,
+        16
+      ],
+      "bounds": [
+        -122.0,
+        46.7,
+        -121.5,
+        47.0
+      ],
+      "center": [
+        -121.76,
+        46.85
+      ],
+      "pmtiles": "tiles/mt-rainier/3dep_n46.85_w121.76_4326_grayscale_3.0x.pmtiles",
+      "preview": "previews/mt-rainier/grayscale.png",
+      "size_mb": 9454.2,
+      "tags": [
+        "cascade",
+        "gray",
+        "volcano",
+        "base",
+        "glacier"
+      ]
+    },
+    {
+      "area": "mt-rainier-3dep",
+      "name": "Mt. Rainier (3DEP)",
+      "theme": "infrared",
+      "description": "False-color thermal: black to purple to cyan to yellow to red",
+      "exaggeration": 3.0,
+      "dem_source": "USGS 3DEP 1/3 arc-second",
+      "zoom": [
+        10,
+        16
+      ],
+      "bounds": [
+        -122.0,
+        46.7,
+        -121.5,
+        47.0
+      ],
+      "center": [
+        -121.76,
+        46.85
+      ],
+      "pmtiles": "tiles/mt-rainier/3dep_n46.85_w121.76_4326_infrared_3.0x.pmtiles",
+      "preview": "previews/mt-rainier/infrared.png",
+      "size_mb": 11346.6,
+      "tags": [
+        "experimental",
+        "cascade",
+        "volcano",
+        "elevation",
+        "glacier"
+      ]
+    },
+    {
+      "area": "mt-rainier-3dep",
+      "name": "Mt. Rainier (3DEP)",
+      "theme": "magma",
+      "description": "Black to deep purple to red to orange to pale yellow",
+      "exaggeration": 3.0,
+      "dem_source": "USGS 3DEP 1/3 arc-second",
+      "zoom": [
+        10,
+        16
+      ],
+      "bounds": [
+        -122.0,
+        46.7,
+        -121.5,
+        47.0
+      ],
+      "center": [
+        -121.76,
+        46.85
+      ],
+      "pmtiles": "tiles/mt-rainier/3dep_n46.85_w121.76_4326_magma_3.0x.pmtiles",
+      "preview": "previews/mt-rainier/magma.png",
+      "size_mb": 10925.6,
+      "tags": [
+        "experimental",
+        "cascade",
+        "volcano",
+        "elevation",
+        "glacier"
+      ]
+    },
+    {
+      "area": "mt-rainier-3dep",
+      "name": "Mt. Rainier (3DEP)",
+      "theme": "midnight",
+      "description": "Deep blue-black with subtle terrain detail",
+      "exaggeration": 3.0,
+      "dem_source": "USGS 3DEP 1/3 arc-second",
+      "zoom": [
+        10,
+        16
+      ],
+      "bounds": [
+        -122.0,
+        46.7,
+        -121.5,
+        47.0
+      ],
+      "center": [
+        -121.76,
+        46.85
+      ],
+      "pmtiles": "tiles/mt-rainier/3dep_n46.85_w121.76_4326_midnight_3.0x.pmtiles",
+      "preview": "previews/mt-rainier/midnight.png",
+      "size_mb": 12516.5,
+      "tags": [
+        "cascade",
+        "volcano",
+        "basemap",
+        "glacier",
+        "dark"
+      ]
+    },
+    {
+      "area": "mt-rainier-3dep",
+      "name": "Mt. Rainier (3DEP)",
+      "theme": "ocean-depth",
+      "description": "Deep ocean blue at valleys to pale aqua at summit",
+      "exaggeration": 3.0,
+      "dem_source": "USGS 3DEP 1/3 arc-second",
+      "zoom": [
+        10,
+        16
+      ],
+      "bounds": [
+        -122.0,
+        46.7,
+        -121.5,
+        47.0
+      ],
+      "center": [
+        -121.76,
+        46.85
+      ],
+      "pmtiles": "tiles/mt-rainier/3dep_n46.85_w121.76_4326_ocean-depth_3.0x.pmtiles",
+      "preview": "previews/mt-rainier/ocean-depth.png",
+      "size_mb": 11778.8,
+      "tags": [
+        "experimental",
+        "cascade",
+        "volcano",
+        "elevation",
+        "glacier"
+      ]
+    },
+    {
+      "area": "mt-rainier-3dep",
+      "name": "Mt. Rainier (3DEP)",
+      "theme": "simmon",
+      "description": "Robert Simmon's composite technique with aspect depth cues",
+      "exaggeration": 3.0,
+      "dem_source": "USGS 3DEP 1/3 arc-second",
+      "zoom": [
+        10,
+        16
+      ],
+      "bounds": [
+        -122.0,
+        46.7,
+        -121.5,
+        47.0
+      ],
+      "center": [
+        -121.76,
+        46.85
+      ],
+      "pmtiles": "tiles/mt-rainier/3dep_n46.85_w121.76_4326_simmon_3.0x.pmtiles",
+      "preview": "previews/mt-rainier/simmon.png",
+      "size_mb": 12516.5,
+      "tags": [
+        "cascade",
+        "volcano",
+        "publication",
+        "glacier",
+        "dark"
+      ]
+    },
+    {
+      "area": "mt-rainier-3dep",
+      "name": "Mt. Rainier (3DEP)",
+      "theme": "sunset-ridge",
+      "description": "Deep violet night to rose to amber to pale gold summit",
+      "exaggeration": 3.0,
+      "dem_source": "USGS 3DEP 1/3 arc-second",
+      "zoom": [
+        10,
+        16
+      ],
+      "bounds": [
+        -122.0,
+        46.7,
+        -121.5,
+        47.0
+      ],
+      "center": [
+        -121.76,
+        46.85
+      ],
+      "pmtiles": "tiles/mt-rainier/3dep_n46.85_w121.76_4326_sunset-ridge_3.0x.pmtiles",
+      "preview": "previews/mt-rainier/sunset-ridge.png",
+      "size_mb": 12396.4,
+      "tags": [
+        "experimental",
+        "cascade",
+        "volcano",
+        "elevation",
+        "glacier"
+      ]
+    },
+    {
+      "area": "mt-rainier-3dep",
+      "name": "Mt. Rainier (3DEP)",
+      "theme": "tactical",
+      "description": "Muted green-brown, high contrast",
+      "exaggeration": 3.0,
+      "dem_source": "USGS 3DEP 1/3 arc-second",
+      "zoom": [
+        10,
+        16
+      ],
+      "bounds": [
+        -122.0,
+        46.7,
+        -121.5,
+        47.0
+      ],
+      "center": [
+        -121.76,
+        46.85
+      ],
+      "pmtiles": "tiles/mt-rainier/3dep_n46.85_w121.76_4326_tactical_3.0x.pmtiles",
+      "preview": "previews/mt-rainier/tactical.png",
+      "size_mb": 6581.3,
+      "tags": [
+        "cascade",
+        "tactical",
+        "volcano",
+        "glacier",
+        "dark"
+      ]
+    },
+    {
+      "area": "mt-rainier-3dep",
+      "name": "Mt. Rainier (3DEP)",
+      "theme": "topo-classic",
+      "description": "USGS hypsometric: green lowlands to tan to brown to grey to white",
+      "exaggeration": 3.0,
+      "dem_source": "USGS 3DEP 1/3 arc-second",
+      "zoom": [
+        10,
+        16
+      ],
+      "bounds": [
+        -122.0,
+        46.7,
+        -121.5,
+        47.0
+      ],
+      "center": [
+        -121.76,
+        46.85
+      ],
+      "pmtiles": "tiles/mt-rainier/3dep_n46.85_w121.76_4326_topo-classic_3.0x.pmtiles",
+      "preview": "previews/mt-rainier/topo-classic.png",
+      "size_mb": 13387.4,
+      "tags": [
+        "cascade",
+        "volcano",
+        "cartographic",
+        "elevation",
+        "glacier"
+      ]
+    },
+    {
+      "area": "mt-rainier-3dep",
+      "name": "Mt. Rainier (3DEP)",
+      "theme": "toxic",
+      "description": "Dark olive to poison green to acid yellow",
+      "exaggeration": 3.0,
+      "dem_source": "USGS 3DEP 1/3 arc-second",
+      "zoom": [
+        10,
+        16
+      ],
+      "bounds": [
+        -122.0,
+        46.7,
+        -121.5,
+        47.0
+      ],
+      "center": [
+        -121.76,
+        46.85
+      ],
+      "pmtiles": "tiles/mt-rainier/3dep_n46.85_w121.76_4326_toxic_3.0x.pmtiles",
+      "preview": "previews/mt-rainier/toxic.png",
+      "size_mb": 10977.4,
+      "tags": [
+        "experimental",
+        "cascade",
+        "volcano",
+        "elevation",
+        "glacier"
+      ]
+    },
+    {
+      "area": "mt-rainier-3dep",
+      "name": "Mt. Rainier (3DEP)",
+      "theme": "vivid",
+      "description": "Saturated blue to green to orange to red",
+      "exaggeration": 3.0,
+      "dem_source": "USGS 3DEP 1/3 arc-second",
+      "zoom": [
+        10,
+        16
+      ],
+      "bounds": [
+        -122.0,
+        46.7,
+        -121.5,
+        47.0
+      ],
+      "center": [
+        -121.76,
+        46.85
+      ],
+      "pmtiles": "tiles/mt-rainier/3dep_n46.85_w121.76_4326_vivid_3.0x.pmtiles",
+      "preview": "previews/mt-rainier/vivid.png",
+      "size_mb": 15253.7,
+      "tags": [
+        "cascade",
+        "volcano",
+        "vivid",
+        "glacier",
+        "dark"
+      ]
+    },
+    {
+      "area": "mt-rainier-3dep",
+      "name": "Mt. Rainier (3DEP)",
+      "theme": "vivid-elevation",
+      "description": "Elevation-mapped vivid: blue low to green to orange to red high",
+      "exaggeration": 3.0,
+      "dem_source": "USGS 3DEP 1/3 arc-second",
+      "zoom": [
+        10,
+        16
+      ],
+      "bounds": [
+        -122.0,
+        46.7,
+        -121.5,
+        47.0
+      ],
+      "center": [
+        -121.76,
+        46.85
+      ],
+      "pmtiles": "tiles/mt-rainier/3dep_n46.85_w121.76_4326_vivid-elevation_3.0x.pmtiles",
+      "preview": "previews/mt-rainier/vivid-elevation.png",
+      "size_mb": 11633.7,
+      "tags": [
+        "cascade",
+        "volcano",
+        "vivid",
+        "elevation",
+        "glacier"
+      ]
+    },
+    {
+      "area": "mt-rainier-3dep",
+      "name": "Mt. Rainier (3DEP)",
+      "theme": "volcanic-ash",
+      "description": "Charcoal base to warm ash grey to bone white",
+      "exaggeration": 3.0,
+      "dem_source": "USGS 3DEP 1/3 arc-second",
+      "zoom": [
+        10,
+        16
+      ],
+      "bounds": [
+        -122.0,
+        46.7,
+        -121.5,
+        47.0
+      ],
+      "center": [
+        -121.76,
+        46.85
+      ],
+      "pmtiles": "tiles/mt-rainier/3dep_n46.85_w121.76_4326_volcanic-ash_3.0x.pmtiles",
+      "preview": "previews/mt-rainier/volcanic-ash.png",
+      "size_mb": 11393.1,
+      "tags": [
+        "experimental",
+        "cascade",
+        "volcano",
+        "elevation",
+        "glacier"
+      ]
+    },
+    {
+      "area": "mt-rainier-sfm",
+      "name": "Mt. Rainier (NPS SfM)",
+      "theme": "aurora",
+      "description": "Deep space to midnight blue to electric teal to neon green",
+      "exaggeration": 3.0,
+      "dem_source": "NPS SfM 2021 ~1m",
+      "zoom": [
+        10,
+        16
+      ],
+      "bounds": [
+        -121.9,
+        46.75,
+        -121.5,
+        46.97
+      ],
+      "center": [
+        -121.7,
+        46.86
+      ],
+      "pmtiles": "tiles/mt-rainier/nps_sfm_rainier_n46.86_w121.70_aurora_3.0x.pmtiles",
+      "preview": "previews/mt-rainier/aurora.png",
+      "size_mb": 10459.5,
+      "tags": [
+        "experimental",
+        "cascade",
+        "volcano",
+        "elevation",
+        "glacier",
+        "high-res"
+      ]
+    },
+    {
+      "area": "mt-rainier-sfm",
+      "name": "Mt. Rainier (NPS SfM)",
+      "theme": "cool",
+      "description": "Desaturated blue-grey, cartographic",
+      "exaggeration": 3.0,
+      "dem_source": "NPS SfM 2021 ~1m",
+      "zoom": [
+        10,
+        16
+      ],
+      "bounds": [
+        -121.9,
+        46.75,
+        -121.5,
+        46.97
+      ],
+      "center": [
+        -121.7,
+        46.86
+      ],
+      "pmtiles": "tiles/mt-rainier/nps_sfm_rainier_n46.86_w121.70_cool_3.0x.pmtiles",
+      "preview": "previews/mt-rainier/cool.png",
+      "size_mb": 11778.0,
+      "tags": [
+        "cascade",
+        "volcano",
+        "cool",
+        "cartographic",
+        "glacier",
+        "high-res"
+      ]
+    },
+    {
+      "area": "mt-rainier-sfm",
+      "name": "Mt. Rainier (NPS SfM)",
+      "theme": "cool-elevation",
+      "description": "Elevation-mapped cool blue-grey",
+      "exaggeration": 3.0,
+      "dem_source": "NPS SfM 2021 ~1m",
+      "zoom": [
+        10,
+        16
+      ],
+      "bounds": [
+        -121.9,
+        46.75,
+        -121.5,
+        46.97
+      ],
+      "center": [
+        -121.7,
+        46.86
+      ],
+      "pmtiles": "tiles/mt-rainier/nps_sfm_rainier_n46.86_w121.70_cool-elevation_3.0x.pmtiles",
+      "preview": "previews/mt-rainier/cool-elevation.png",
+      "size_mb": 11644.6,
+      "tags": [
+        "cascade",
+        "volcano",
+        "cool",
+        "elevation",
+        "glacier",
+        "high-res"
+      ]
+    },
+    {
+      "area": "mt-rainier-sfm",
+      "name": "Mt. Rainier (NPS SfM)",
+      "theme": "daylight",
+      "description": "Warm grey with soft shadows",
+      "exaggeration": 3.0,
+      "dem_source": "NPS SfM 2021 ~1m",
+      "zoom": [
+        10,
+        16
+      ],
+      "bounds": [
+        -121.9,
+        46.75,
+        -121.5,
+        46.97
+      ],
+      "center": [
+        -121.7,
+        46.86
+      ],
+      "pmtiles": "tiles/mt-rainier/nps_sfm_rainier_n46.86_w121.70_daylight_3.0x.pmtiles",
+      "preview": "previews/mt-rainier/daylight.png",
+      "size_mb": 14447.8,
+      "tags": [
+        "cascade",
+        "light",
+        "volcano",
+        "basemap",
+        "glacier",
+        "high-res"
+      ]
+    },
+    {
+      "area": "mt-rainier-sfm",
+      "name": "Mt. Rainier (NPS SfM)",
+      "theme": "desert-sun",
+      "description": "Rust canyons to sandy mesas to bleached white peaks",
+      "exaggeration": 3.0,
+      "dem_source": "NPS SfM 2021 ~1m",
+      "zoom": [
+        10,
+        16
+      ],
+      "bounds": [
+        -121.9,
+        46.75,
+        -121.5,
+        46.97
+      ],
+      "center": [
+        -121.7,
+        46.86
+      ],
+      "pmtiles": "tiles/mt-rainier/nps_sfm_rainier_n46.86_w121.70_desert-sun_3.0x.pmtiles",
+      "preview": "previews/mt-rainier/desert-sun.png",
+      "size_mb": 12639.2,
+      "tags": [
+        "experimental",
+        "cascade",
+        "volcano",
+        "elevation",
+        "glacier",
+        "high-res"
+      ]
+    },
+    {
+      "area": "mt-rainier-sfm",
+      "name": "Mt. Rainier (NPS SfM)",
+      "theme": "flat-terrain",
+      "description": "Heavy 9x exaggeration for subtle landscapes",
+      "exaggeration": 3.0,
+      "dem_source": "NPS SfM 2021 ~1m",
+      "zoom": [
+        10,
+        16
+      ],
+      "bounds": [
+        -121.9,
+        46.75,
+        -121.5,
+        46.97
+      ],
+      "center": [
+        -121.7,
+        46.86
+      ],
+      "pmtiles": "tiles/mt-rainier/nps_sfm_rainier_n46.86_w121.70_flat-terrain_3.0x.pmtiles",
+      "preview": "previews/mt-rainier/flat-terrain.png",
+      "size_mb": 12516.5,
+      "tags": [
+        "cascade",
+        "flat",
+        "volcano",
+        "glacier",
+        "dark",
+        "high-res"
+      ]
+    },
+    {
+      "area": "mt-rainier-sfm",
+      "name": "Mt. Rainier (NPS SfM)",
+      "theme": "forest-canopy",
+      "description": "Near-black forest floor to dark green to bright canopy",
+      "exaggeration": 3.0,
+      "dem_source": "NPS SfM 2021 ~1m",
+      "zoom": [
+        10,
+        16
+      ],
+      "bounds": [
+        -121.9,
+        46.75,
+        -121.5,
+        46.97
+      ],
+      "center": [
+        -121.7,
+        46.86
+      ],
+      "pmtiles": "tiles/mt-rainier/nps_sfm_rainier_n46.86_w121.70_forest-canopy_3.0x.pmtiles",
+      "preview": "previews/mt-rainier/forest-canopy.png",
+      "size_mb": 10514.6,
+      "tags": [
+        "experimental",
+        "cascade",
+        "volcano",
+        "elevation",
+        "glacier",
+        "high-res"
+      ]
+    },
+    {
+      "area": "mt-rainier-sfm",
+      "name": "Mt. Rainier (NPS SfM)",
+      "theme": "grayscale",
+      "description": "Pure hillshade, no color \u2014 use as a base layer",
+      "exaggeration": 3.0,
+      "dem_source": "NPS SfM 2021 ~1m",
+      "zoom": [
+        10,
+        16
+      ],
+      "bounds": [
+        -121.9,
+        46.75,
+        -121.5,
+        46.97
+      ],
+      "center": [
+        -121.7,
+        46.86
+      ],
+      "pmtiles": "tiles/mt-rainier/nps_sfm_rainier_n46.86_w121.70_grayscale_3.0x.pmtiles",
+      "preview": "previews/mt-rainier/grayscale.png",
+      "size_mb": 9454.2,
+      "tags": [
+        "cascade",
+        "gray",
+        "volcano",
+        "base",
+        "glacier",
+        "high-res"
+      ]
+    },
+    {
+      "area": "mt-rainier-sfm",
+      "name": "Mt. Rainier (NPS SfM)",
+      "theme": "infrared",
+      "description": "False-color thermal: black to purple to cyan to yellow to red",
+      "exaggeration": 3.0,
+      "dem_source": "NPS SfM 2021 ~1m",
+      "zoom": [
+        10,
+        16
+      ],
+      "bounds": [
+        -121.9,
+        46.75,
+        -121.5,
+        46.97
+      ],
+      "center": [
+        -121.7,
+        46.86
+      ],
+      "pmtiles": "tiles/mt-rainier/nps_sfm_rainier_n46.86_w121.70_infrared_3.0x.pmtiles",
+      "preview": "previews/mt-rainier/infrared.png",
+      "size_mb": 11346.6,
+      "tags": [
+        "experimental",
+        "cascade",
+        "volcano",
+        "elevation",
+        "glacier",
+        "high-res"
+      ]
+    },
+    {
+      "area": "mt-rainier-sfm",
+      "name": "Mt. Rainier (NPS SfM)",
+      "theme": "magma",
+      "description": "Black to deep purple to red to orange to pale yellow",
+      "exaggeration": 3.0,
+      "dem_source": "NPS SfM 2021 ~1m",
+      "zoom": [
+        10,
+        16
+      ],
+      "bounds": [
+        -121.9,
+        46.75,
+        -121.5,
+        46.97
+      ],
+      "center": [
+        -121.7,
+        46.86
+      ],
+      "pmtiles": "tiles/mt-rainier/nps_sfm_rainier_n46.86_w121.70_magma_3.0x.pmtiles",
+      "preview": "previews/mt-rainier/magma.png",
+      "size_mb": 10925.6,
+      "tags": [
+        "experimental",
+        "cascade",
+        "volcano",
+        "elevation",
+        "glacier",
+        "high-res"
+      ]
+    },
+    {
+      "area": "mt-rainier-sfm",
+      "name": "Mt. Rainier (NPS SfM)",
+      "theme": "midnight",
+      "description": "Deep blue-black with subtle terrain detail",
+      "exaggeration": 3.0,
+      "dem_source": "NPS SfM 2021 ~1m",
+      "zoom": [
+        10,
+        16
+      ],
+      "bounds": [
+        -121.9,
+        46.75,
+        -121.5,
+        46.97
+      ],
+      "center": [
+        -121.7,
+        46.86
+      ],
+      "pmtiles": "tiles/mt-rainier/nps_sfm_rainier_n46.86_w121.70_midnight_3.0x.pmtiles",
+      "preview": "previews/mt-rainier/midnight.png",
+      "size_mb": 12516.5,
+      "tags": [
+        "cascade",
+        "volcano",
+        "basemap",
+        "glacier",
+        "dark",
+        "high-res"
+      ]
+    },
+    {
+      "area": "mt-rainier-sfm",
+      "name": "Mt. Rainier (NPS SfM)",
+      "theme": "ocean-depth",
+      "description": "Deep ocean blue at valleys to pale aqua at summit",
+      "exaggeration": 3.0,
+      "dem_source": "NPS SfM 2021 ~1m",
+      "zoom": [
+        10,
+        16
+      ],
+      "bounds": [
+        -121.9,
+        46.75,
+        -121.5,
+        46.97
+      ],
+      "center": [
+        -121.7,
+        46.86
+      ],
+      "pmtiles": "tiles/mt-rainier/nps_sfm_rainier_n46.86_w121.70_ocean-depth_3.0x.pmtiles",
+      "preview": "previews/mt-rainier/ocean-depth.png",
+      "size_mb": 11778.8,
+      "tags": [
+        "experimental",
+        "cascade",
+        "volcano",
+        "elevation",
+        "glacier",
+        "high-res"
+      ]
+    },
+    {
+      "area": "mt-rainier-sfm",
+      "name": "Mt. Rainier (NPS SfM)",
+      "theme": "simmon",
+      "description": "Robert Simmon's composite technique with aspect depth cues",
+      "exaggeration": 3.0,
+      "dem_source": "NPS SfM 2021 ~1m",
+      "zoom": [
+        10,
+        16
+      ],
+      "bounds": [
+        -121.9,
+        46.75,
+        -121.5,
+        46.97
+      ],
+      "center": [
+        -121.7,
+        46.86
+      ],
+      "pmtiles": "tiles/mt-rainier/nps_sfm_rainier_n46.86_w121.70_simmon_3.0x.pmtiles",
+      "preview": "previews/mt-rainier/simmon.png",
+      "size_mb": 12516.5,
+      "tags": [
+        "cascade",
+        "volcano",
+        "publication",
+        "glacier",
+        "dark",
+        "high-res"
+      ]
+    },
+    {
+      "area": "mt-rainier-sfm",
+      "name": "Mt. Rainier (NPS SfM)",
+      "theme": "sunset-ridge",
+      "description": "Deep violet night to rose to amber to pale gold summit",
+      "exaggeration": 3.0,
+      "dem_source": "NPS SfM 2021 ~1m",
+      "zoom": [
+        10,
+        16
+      ],
+      "bounds": [
+        -121.9,
+        46.75,
+        -121.5,
+        46.97
+      ],
+      "center": [
+        -121.7,
+        46.86
+      ],
+      "pmtiles": "tiles/mt-rainier/nps_sfm_rainier_n46.86_w121.70_sunset-ridge_3.0x.pmtiles",
+      "preview": "previews/mt-rainier/sunset-ridge.png",
+      "size_mb": 12396.4,
+      "tags": [
+        "experimental",
+        "cascade",
+        "volcano",
+        "elevation",
+        "glacier",
+        "high-res"
+      ]
+    },
+    {
+      "area": "mt-rainier-sfm",
+      "name": "Mt. Rainier (NPS SfM)",
+      "theme": "tactical",
+      "description": "Muted green-brown, high contrast",
+      "exaggeration": 3.0,
+      "dem_source": "NPS SfM 2021 ~1m",
+      "zoom": [
+        10,
+        16
+      ],
+      "bounds": [
+        -121.9,
+        46.75,
+        -121.5,
+        46.97
+      ],
+      "center": [
+        -121.7,
+        46.86
+      ],
+      "pmtiles": "tiles/mt-rainier/nps_sfm_rainier_n46.86_w121.70_tactical_3.0x.pmtiles",
+      "preview": "previews/mt-rainier/tactical.png",
+      "size_mb": 6581.3,
+      "tags": [
+        "cascade",
+        "tactical",
+        "volcano",
+        "glacier",
+        "dark",
+        "high-res"
+      ]
+    },
+    {
+      "area": "mt-rainier-sfm",
+      "name": "Mt. Rainier (NPS SfM)",
+      "theme": "topo-classic",
+      "description": "USGS hypsometric: green lowlands to tan to brown to grey to white",
+      "exaggeration": 3.0,
+      "dem_source": "NPS SfM 2021 ~1m",
+      "zoom": [
+        10,
+        16
+      ],
+      "bounds": [
+        -121.9,
+        46.75,
+        -121.5,
+        46.97
+      ],
+      "center": [
+        -121.7,
+        46.86
+      ],
+      "pmtiles": "tiles/mt-rainier/nps_sfm_rainier_n46.86_w121.70_topo-classic_3.0x.pmtiles",
+      "preview": "previews/mt-rainier/topo-classic.png",
+      "size_mb": 13387.4,
+      "tags": [
+        "cascade",
+        "volcano",
+        "elevation",
+        "cartographic",
+        "glacier",
+        "high-res"
+      ]
+    },
+    {
+      "area": "mt-rainier-sfm",
+      "name": "Mt. Rainier (NPS SfM)",
+      "theme": "toxic",
+      "description": "Dark olive to poison green to acid yellow",
+      "exaggeration": 3.0,
+      "dem_source": "NPS SfM 2021 ~1m",
+      "zoom": [
+        10,
+        16
+      ],
+      "bounds": [
+        -121.9,
+        46.75,
+        -121.5,
+        46.97
+      ],
+      "center": [
+        -121.7,
+        46.86
+      ],
+      "pmtiles": "tiles/mt-rainier/nps_sfm_rainier_n46.86_w121.70_toxic_3.0x.pmtiles",
+      "preview": "previews/mt-rainier/toxic.png",
+      "size_mb": 10977.4,
+      "tags": [
+        "experimental",
+        "cascade",
+        "volcano",
+        "elevation",
+        "glacier",
+        "high-res"
+      ]
+    },
+    {
+      "area": "mt-rainier-sfm",
+      "name": "Mt. Rainier (NPS SfM)",
+      "theme": "vivid",
+      "description": "Saturated blue to green to orange to red",
+      "exaggeration": 3.0,
+      "dem_source": "NPS SfM 2021 ~1m",
+      "zoom": [
+        10,
+        16
+      ],
+      "bounds": [
+        -121.9,
+        46.75,
+        -121.5,
+        46.97
+      ],
+      "center": [
+        -121.7,
+        46.86
+      ],
+      "pmtiles": "tiles/mt-rainier/nps_sfm_rainier_n46.86_w121.70_vivid_3.0x.pmtiles",
+      "preview": "previews/mt-rainier/vivid.png",
+      "size_mb": 15253.7,
+      "tags": [
+        "cascade",
+        "volcano",
+        "vivid",
+        "glacier",
+        "dark",
+        "high-res"
+      ]
+    },
+    {
+      "area": "mt-rainier-sfm",
+      "name": "Mt. Rainier (NPS SfM)",
+      "theme": "vivid-elevation",
+      "description": "Elevation-mapped vivid: blue low to green to orange to red high",
+      "exaggeration": 3.0,
+      "dem_source": "NPS SfM 2021 ~1m",
+      "zoom": [
+        10,
+        16
+      ],
+      "bounds": [
+        -121.9,
+        46.75,
+        -121.5,
+        46.97
+      ],
+      "center": [
+        -121.7,
+        46.86
+      ],
+      "pmtiles": "tiles/mt-rainier/nps_sfm_rainier_n46.86_w121.70_vivid-elevation_3.0x.pmtiles",
+      "preview": "previews/mt-rainier/vivid-elevation.png",
+      "size_mb": 11633.7,
+      "tags": [
+        "cascade",
+        "volcano",
+        "vivid",
+        "elevation",
+        "glacier",
+        "high-res"
+      ]
+    },
+    {
+      "area": "mt-rainier-sfm",
+      "name": "Mt. Rainier (NPS SfM)",
+      "theme": "volcanic-ash",
+      "description": "Charcoal base to warm ash grey to bone white",
+      "exaggeration": 3.0,
+      "dem_source": "NPS SfM 2021 ~1m",
+      "zoom": [
+        10,
+        16
+      ],
+      "bounds": [
+        -121.9,
+        46.75,
+        -121.5,
+        46.97
+      ],
+      "center": [
+        -121.7,
+        46.86
+      ],
+      "pmtiles": "tiles/mt-rainier/nps_sfm_rainier_n46.86_w121.70_volcanic-ash_3.0x.pmtiles",
+      "preview": "previews/mt-rainier/volcanic-ash.png",
+      "size_mb": 11393.1,
+      "tags": [
+        "experimental",
+        "cascade",
+        "volcano",
+        "elevation",
+        "glacier",
+        "high-res"
+      ]
+    },
+    {
+      "area": "mt-st-helens",
+      "name": "Mt. St. Helens",
+      "theme": "alpine-glacier",
+      "description": "Deep indigo valleys to teal forests to icy white summit",
+      "exaggeration": 3.0,
+      "dem_source": "USGS 3DEP 1/3 arc-second",
+      "zoom": [
+        10,
+        14
+      ],
+      "bounds": [
+        -122.25,
+        46.15,
+        -122.1,
+        46.25
+      ],
+      "center": [
+        -122.175,
+        46.2
+      ],
+      "pmtiles": "tiles/3dep_n46.20_w122.17_4326_alpine-glacier_3.0x.pmtiles",
+      "preview": "previews/mt-rainier/alpine-glacier.png",
+      "size_mb": 19.9,
+      "tags": [
+        "cascade",
+        "alpine",
+        "elevation",
+        "volcano"
+      ]
+    },
+    {
+      "area": "mt-st-helens",
+      "name": "Mt. St. Helens",
+      "theme": "aurora",
+      "description": "Deep space to midnight blue to electric teal to neon green",
+      "exaggeration": 3.0,
+      "dem_source": "USGS 3DEP 1/3 arc-second",
+      "zoom": [
+        10,
+        14
+      ],
+      "bounds": [
+        -122.25,
+        46.15,
+        -122.1,
+        46.25
+      ],
+      "center": [
+        -122.175,
+        46.2
+      ],
+      "pmtiles": "tiles/3dep_n46.20_w122.17_4326_aurora_3.0x.pmtiles",
+      "preview": "previews/mt-rainier/aurora.png",
+      "size_mb": 17.4,
+      "tags": [
+        "experimental",
+        "cascade",
+        "elevation",
+        "volcano"
+      ]
+    },
+    {
+      "area": "mt-st-helens",
+      "name": "Mt. St. Helens",
+      "theme": "cool",
+      "description": "Desaturated blue-grey, cartographic",
+      "exaggeration": 3.0,
+      "dem_source": "USGS 3DEP 1/3 arc-second",
+      "zoom": [
+        10,
+        14
+      ],
+      "bounds": [
+        -122.25,
+        46.15,
+        -122.1,
+        46.25
+      ],
+      "center": [
+        -122.175,
+        46.2
+      ],
+      "pmtiles": "tiles/3dep_n46.20_w122.17_4326_cool_3.0x.pmtiles",
+      "preview": "previews/mt-rainier/cool.png",
+      "size_mb": 20.4,
+      "tags": [
+        "cool",
+        "cascade",
+        "cartographic",
+        "volcano"
+      ]
+    },
+    {
+      "area": "mt-st-helens",
+      "name": "Mt. St. Helens",
+      "theme": "daylight",
+      "description": "Warm grey with soft shadows",
+      "exaggeration": 3.0,
+      "dem_source": "USGS 3DEP 1/3 arc-second",
+      "zoom": [
+        10,
+        14
+      ],
+      "bounds": [
+        -122.25,
+        46.15,
+        -122.1,
+        46.25
+      ],
+      "center": [
+        -122.175,
+        46.2
+      ],
+      "pmtiles": "tiles/3dep_n46.20_w122.17_4326_daylight_3.0x.pmtiles",
+      "preview": "previews/mt-rainier/daylight.png",
+      "size_mb": 21.5,
+      "tags": [
+        "basemap",
+        "cascade",
+        "light",
+        "volcano"
+      ]
+    },
+    {
+      "area": "mt-st-helens",
+      "name": "Mt. St. Helens",
+      "theme": "desert-sun",
+      "description": "Rust canyons to sandy mesas to bleached white peaks",
+      "exaggeration": 3.0,
+      "dem_source": "USGS 3DEP 1/3 arc-second",
+      "zoom": [
+        10,
+        14
+      ],
+      "bounds": [
+        -122.25,
+        46.15,
+        -122.1,
+        46.25
+      ],
+      "center": [
+        -122.175,
+        46.2
+      ],
+      "pmtiles": "tiles/3dep_n46.20_w122.17_4326_desert-sun_3.0x.pmtiles",
+      "preview": "previews/mt-rainier/desert-sun.png",
+      "size_mb": 19.9,
+      "tags": [
+        "experimental",
+        "cascade",
+        "elevation",
+        "volcano"
+      ]
+    },
+    {
+      "area": "mt-st-helens",
+      "name": "Mt. St. Helens",
+      "theme": "infrared",
+      "description": "False-color thermal: black to purple to cyan to yellow to red",
+      "exaggeration": 3.0,
+      "dem_source": "USGS 3DEP 1/3 arc-second",
+      "zoom": [
+        10,
+        14
+      ],
+      "bounds": [
+        -122.25,
+        46.15,
+        -122.1,
+        46.25
+      ],
+      "center": [
+        -122.175,
+        46.2
+      ],
+      "pmtiles": "tiles/3dep_n46.20_w122.17_4326_infrared_3.0x.pmtiles",
+      "preview": "previews/mt-rainier/infrared.png",
+      "size_mb": 18.8,
+      "tags": [
+        "experimental",
+        "cascade",
+        "elevation",
+        "volcano"
+      ]
+    },
+    {
+      "area": "mt-st-helens",
+      "name": "Mt. St. Helens",
+      "theme": "magma",
+      "description": "Black to deep purple to red to orange to pale yellow",
+      "exaggeration": 3.0,
+      "dem_source": "USGS 3DEP 1/3 arc-second",
+      "zoom": [
+        10,
+        14
+      ],
+      "bounds": [
+        -122.25,
+        46.15,
+        -122.1,
+        46.25
+      ],
+      "center": [
+        -122.175,
+        46.2
+      ],
+      "pmtiles": "tiles/3dep_n46.20_w122.17_4326_magma_3.0x.pmtiles",
+      "preview": "previews/mt-rainier/magma.png",
+      "size_mb": 17.1,
+      "tags": [
+        "experimental",
+        "cascade",
+        "elevation",
+        "volcano"
+      ]
+    },
     {
       "area": "mt-st-helens",
       "name": "Mt. St. Helens",
       "theme": "midnight",
       "description": "Deep blue-black with subtle terrain detail",
-      "exaggeration": 3,
+      "exaggeration": 3.0,
       "dem_source": "USGS 3DEP 1/3 arc-second",
-      "zoom": [10, 14],
-      "bounds": [-122.25, 46.15, -122.10, 46.25],
-      "center": [-122.175, 46.2],
+      "zoom": [
+        10,
+        14
+      ],
+      "bounds": [
+        -122.25,
+        46.15,
+        -122.1,
+        46.25
+      ],
+      "center": [
+        -122.175,
+        46.2
+      ],
       "pmtiles": "tiles/3dep_n46.20_w122.17_4326_midnight_3.0x.pmtiles",
-      "preview": "previews/midnight.png",
-      "size_mb": 4.9,
-      "tags": ["dark", "basemap"]
+      "preview": "previews/mt-rainier/midnight.png",
+      "size_mb": 19.8,
+      "tags": [
+        "basemap",
+        "cascade",
+        "dark",
+        "volcano"
+      ]
+    },
+    {
+      "area": "mt-st-helens",
+      "name": "Mt. St. Helens",
+      "theme": "simmon",
+      "description": "Robert Simmon's composite technique with aspect depth cues",
+      "exaggeration": 3.0,
+      "dem_source": "USGS 3DEP 1/3 arc-second",
+      "zoom": [
+        10,
+        14
+      ],
+      "bounds": [
+        -122.25,
+        46.15,
+        -122.1,
+        46.25
+      ],
+      "center": [
+        -122.175,
+        46.2
+      ],
+      "pmtiles": "tiles/3dep_n46.20_w122.17_4326_simmon_3.0x.pmtiles",
+      "preview": "previews/mt-rainier/simmon.png",
+      "size_mb": 19.8,
+      "tags": [
+        "cascade",
+        "publication",
+        "dark",
+        "volcano"
+      ]
+    },
+    {
+      "area": "mt-st-helens",
+      "name": "Mt. St. Helens",
+      "theme": "tactical",
+      "description": "Muted green-brown, high contrast",
+      "exaggeration": 3.0,
+      "dem_source": "USGS 3DEP 1/3 arc-second",
+      "zoom": [
+        10,
+        14
+      ],
+      "bounds": [
+        -122.25,
+        46.15,
+        -122.1,
+        46.25
+      ],
+      "center": [
+        -122.175,
+        46.2
+      ],
+      "pmtiles": "tiles/3dep_n46.20_w122.17_4326_tactical_3.0x.pmtiles",
+      "preview": "previews/mt-rainier/tactical.png",
+      "size_mb": 15.6,
+      "tags": [
+        "cascade",
+        "tactical",
+        "dark",
+        "volcano"
+      ]
+    },
+    {
+      "area": "mt-st-helens",
+      "name": "Mt. St. Helens",
+      "theme": "vivid",
+      "description": "Saturated blue to green to orange to red",
+      "exaggeration": 3.0,
+      "dem_source": "USGS 3DEP 1/3 arc-second",
+      "zoom": [
+        10,
+        14
+      ],
+      "bounds": [
+        -122.25,
+        46.15,
+        -122.1,
+        46.25
+      ],
+      "center": [
+        -122.175,
+        46.2
+      ],
+      "pmtiles": "tiles/3dep_n46.20_w122.17_4326_vivid_3.0x.pmtiles",
+      "preview": "previews/mt-rainier/vivid.png",
+      "size_mb": 24.1,
+      "tags": [
+        "vivid",
+        "cascade",
+        "dark",
+        "volcano"
+      ]
     }
   ],
   "themes": [
-    {"name": "alpine-glacier", "description": "Deep indigo valleys to teal forests to icy white summit", "color": "#2a3a6b", "tags": ["elevation", "alpine"]},
-    {"name": "midnight", "description": "Deep blue-black with subtle terrain detail", "color": "#1a2845", "tags": ["dark", "basemap"]},
-    {"name": "daylight", "description": "Warm grey with soft shadows", "color": "#c8c0b4", "tags": ["light", "basemap"]},
-    {"name": "magma", "description": "Black to deep purple to red to orange to pale yellow", "color": "#8b1a1a", "tags": ["elevation", "experimental"]},
-    {"name": "vivid", "description": "Saturated blue to green to orange to red", "color": "#ff6633", "tags": ["vivid", "dark"]},
-    {"name": "desert-sun", "description": "Rust canyons to sandy mesas to bleached white peaks", "color": "#b87333", "tags": ["elevation", "experimental"]},
-    {"name": "aurora", "description": "Deep space to midnight blue to electric teal to neon green", "color": "#00cc88", "tags": ["elevation", "experimental"]},
-    {"name": "infrared", "description": "False-color thermal: black to purple to cyan to yellow to red", "color": "#cc2244", "tags": ["elevation", "experimental"]},
-    {"name": "cool", "description": "Desaturated blue-grey, cartographic", "color": "#6a7d8a", "tags": ["cool", "cartographic"]},
-    {"name": "tactical", "description": "Muted green-brown, high contrast", "color": "#3d4a2f", "tags": ["tactical", "dark"]},
-    {"name": "simmon", "description": "Robert Simmon's composite technique with aspect depth cues", "color": "#1e3050", "tags": ["dark", "publication"]},
-    {"name": "vivid-elevation", "description": "Elevation-mapped vivid: blue low to green to orange to red high", "color": "#e85520", "tags": ["vivid", "elevation"]},
-    {"name": "cool-elevation", "description": "Elevation-mapped cool blue-grey", "color": "#4a6878", "tags": ["cool", "elevation"]},
-    {"name": "volcanic-ash", "description": "Charcoal base to warm ash grey to bone white", "color": "#8a8478", "tags": ["elevation", "experimental"]},
-    {"name": "forest-canopy", "description": "Near-black forest floor to dark green to bright canopy", "color": "#2d5a1e", "tags": ["elevation", "experimental"]},
-    {"name": "ocean-depth", "description": "Deep ocean blue at valleys to pale aqua at summit", "color": "#1a3a5a", "tags": ["elevation", "experimental"]},
-    {"name": "toxic", "description": "Dark olive to poison green to acid yellow", "color": "#6b8a1a", "tags": ["elevation", "experimental"]},
-    {"name": "sunset-ridge", "description": "Deep violet night to rose to amber to pale gold summit", "color": "#cc6644", "tags": ["elevation", "experimental"]},
-    {"name": "topo-classic", "description": "USGS hypsometric: green lowlands to tan to brown to grey to white", "color": "#8b9a5a", "tags": ["elevation", "cartographic"]},
-    {"name": "grayscale", "description": "Pure hillshade, no color — use as a base layer", "color": "#888888", "tags": ["gray", "base"]},
-    {"name": "flat-terrain", "description": "Heavy 9x exaggeration for subtle landscapes", "color": "#1a2845", "tags": ["dark", "flat"]}
+    {
+      "name": "alpine-glacier",
+      "description": "Deep indigo valleys to teal forests to icy white summit",
+      "color": "#2a3a6b",
+      "tags": [
+        "elevation",
+        "alpine"
+      ]
+    },
+    {
+      "name": "aurora",
+      "description": "Deep space to midnight blue to electric teal to neon green",
+      "color": "#00cc88",
+      "tags": [
+        "elevation",
+        "experimental"
+      ]
+    },
+    {
+      "name": "cool",
+      "description": "Desaturated blue-grey, cartographic",
+      "color": "#6a7d8a",
+      "tags": [
+        "cool",
+        "cartographic"
+      ]
+    },
+    {
+      "name": "cool-elevation",
+      "description": "Elevation-mapped cool blue-grey",
+      "color": "#4a6878",
+      "tags": [
+        "cool",
+        "elevation"
+      ]
+    },
+    {
+      "name": "daylight",
+      "description": "Warm grey with soft shadows",
+      "color": "#c8c0b4",
+      "tags": [
+        "light",
+        "basemap"
+      ]
+    },
+    {
+      "name": "desert-sun",
+      "description": "Rust canyons to sandy mesas to bleached white peaks",
+      "color": "#b87333",
+      "tags": [
+        "elevation",
+        "experimental"
+      ]
+    },
+    {
+      "name": "flat-terrain",
+      "description": "Heavy 9x exaggeration for subtle landscapes",
+      "color": "#1a2845",
+      "tags": [
+        "dark",
+        "flat"
+      ]
+    },
+    {
+      "name": "forest-canopy",
+      "description": "Near-black forest floor to dark green to bright canopy",
+      "color": "#2d5a1e",
+      "tags": [
+        "elevation",
+        "experimental"
+      ]
+    },
+    {
+      "name": "grayscale",
+      "description": "Pure hillshade, no color \u2014 use as a base layer",
+      "color": "#888888",
+      "tags": [
+        "gray",
+        "base"
+      ]
+    },
+    {
+      "name": "infrared",
+      "description": "False-color thermal: black to purple to cyan to yellow to red",
+      "color": "#cc2244",
+      "tags": [
+        "elevation",
+        "experimental"
+      ]
+    },
+    {
+      "name": "magma",
+      "description": "Black to deep purple to red to orange to pale yellow",
+      "color": "#8b1a1a",
+      "tags": [
+        "elevation",
+        "experimental"
+      ]
+    },
+    {
+      "name": "midnight",
+      "description": "Deep blue-black with subtle terrain detail",
+      "color": "#1a2845",
+      "tags": [
+        "dark",
+        "basemap"
+      ]
+    },
+    {
+      "name": "ocean-depth",
+      "description": "Deep ocean blue at valleys to pale aqua at summit",
+      "color": "#1a3a5a",
+      "tags": [
+        "elevation",
+        "experimental"
+      ]
+    },
+    {
+      "name": "simmon",
+      "description": "Robert Simmon's composite technique with aspect depth cues",
+      "color": "#1e3050",
+      "tags": [
+        "dark",
+        "publication"
+      ]
+    },
+    {
+      "name": "sunset-ridge",
+      "description": "Deep violet night to rose to amber to pale gold summit",
+      "color": "#cc6644",
+      "tags": [
+        "elevation",
+        "experimental"
+      ]
+    },
+    {
+      "name": "tactical",
+      "description": "Muted green-brown, high contrast",
+      "color": "#3d4a2f",
+      "tags": [
+        "tactical",
+        "dark"
+      ]
+    },
+    {
+      "name": "topo-classic",
+      "description": "USGS hypsometric: green lowlands to tan to brown to grey to white",
+      "color": "#8b9a5a",
+      "tags": [
+        "elevation",
+        "cartographic"
+      ]
+    },
+    {
+      "name": "toxic",
+      "description": "Dark olive to poison green to acid yellow",
+      "color": "#6b8a1a",
+      "tags": [
+        "elevation",
+        "experimental"
+      ]
+    },
+    {
+      "name": "vivid",
+      "description": "Saturated blue to green to orange to red",
+      "color": "#ff6633",
+      "tags": [
+        "vivid",
+        "dark"
+      ]
+    },
+    {
+      "name": "vivid-elevation",
+      "description": "Elevation-mapped vivid: blue low to green to orange to red high",
+      "color": "#e85520",
+      "tags": [
+        "vivid",
+        "elevation"
+      ]
+    },
+    {
+      "name": "volcanic-ash",
+      "description": "Charcoal base to warm ash grey to bone white",
+      "color": "#8a8478",
+      "tags": [
+        "elevation",
+        "experimental"
+      ]
+    }
   ]
 }
