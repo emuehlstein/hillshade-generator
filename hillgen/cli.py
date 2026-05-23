@@ -1025,7 +1025,8 @@ def publish(path, dry_run, gallery, title, caption, author, preview):
         preview_url = None
         if preview:
             prev_path = Path(preview)
-            prev_key = f"{prefix}{prev_path.name}"
+            # Use PMTiles stem as prefix to ensure unique preview filenames
+            prev_key = f"{prefix}preview-{p.stem}{prev_path.suffix}"
             click.echo(f"Uploading preview to s3://{bucket}/{prev_key}...")
             s3.upload_file(
                 str(prev_path), bucket, prev_key,
