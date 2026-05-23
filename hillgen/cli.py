@@ -674,7 +674,8 @@ def run(bbox, place, theme, exaggeration, dem, zoom, output_format, output,
         click.echo(f"  {f.name} ({size_mb:.1f} MB)")
     click.echo(f"\nTo view locally:")
     tiles_dir_name = f"{styled_path.stem}_z{zoom}"
-    tiles_path = get_cache_dir() / "tiles" / tiles_dir_name
+    from .cache import get_cache_dir as _get_cache_dir
+    tiles_path = _get_cache_dir() / "tiles" / tiles_dir_name
     click.echo(f"  hillgen view {tiles_path}")
 
 
