@@ -1048,8 +1048,15 @@ def publish(path, dry_run, gallery, title, caption, author, preview):
                 else:
                     raise
 
+            pmtiles_url = f"https://scriptedrelief.com/{key}"
+            # Dedupe — don't append if this PMTiles URL is already in the catalog
+            if any(s.get("pmtiles") == pmtiles_url for s in catalog["submissions"]):
+                click.echo(f"Already in gallery: {pmtiles_url}")
+                click.echo("Use a different output filename or remove the existing entry first.")
+                raise SystemExit(0)
+
             new_entry = {
-                "pmtiles": f"https://scriptedrelief.com/{key}",
+                "pmtiles": pmtiles_url,
                 "preview": preview_url,
                 "title": title or p.stem,
                 "caption": caption or "",
