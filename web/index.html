@@ -108,9 +108,10 @@ a:hover { color: var(--accent-hover); }
   font-weight: 700;
   letter-spacing: -0.02em;
   margin-bottom: 4px;
-  color: #fff;
+  color: var(--text);
   text-shadow: 0 2px 24px rgba(0,0,0,0.8), 0 1px 4px rgba(0,0,0,0.9);
 }
+.hero h1 span { color: var(--accent); }
 .hero-theme-badge {
   display: inline-block;
   font-size: clamp(0.85rem, 1.8vw, 1.1rem);
@@ -493,7 +494,7 @@ footer a:hover { color: var(--accent); }
 <div class="hero">
   <div class="hero-bg"></div>
   <div class="hero-content">
-    <h1>Scripted Relief</h1>
+    <h1>scripted<span>relief</span></h1>
     <div class="hero-theme-badge" id="hero-theme-badge">alpine-glacier</div>
     <p>Beautiful terrain maps from real-world elevation data. Free to use.</p>
     <div style="margin-bottom:24px">
