@@ -403,39 +403,15 @@ let modalMap = null;
 
 async function loadGallery() {
   try {
-    // Fetch S3 listing of gallery/*.json sidecar files
-    const listUrl = `https://scriptedrelief.s3.us-east-2.amazonaws.com/?list-type=2&prefix=gallery/&delimiter=/`;
-    const res = await fetch(listUrl);
-    if (!res.ok) throw new Error(`S3 list failed: ${res.status}`);
-    const xml = await res.text();
-
-    // Parse XML key list
-    const keys = [...xml.matchAll(/<Key>([^<]+\.json)<\/Key>/g)]
-      .map(m => m[1])
-      .filter(k => k !== 'gallery/catalog.json'); // skip curator catalog if present
-
-    if (keys.length === 0) {
+    const res = await fetch(`${BUCKET_BASE}/gallery/catalog.json?_=${Date.now()}`);
+    if (res.status === 404 || res.status === 403) {
       showEmpty();
       return;
     }
-
-    // Fetch each entry JSON
-    const entries = await Promise.all(
-      keys.map(async key => {
-        try {
-          const r = await fetch(`${BUCKET_BASE}/${key}`);
-          if (!r.ok) return null;
-          const data = await r.json();
-          data._key = key;
-          return data;
-        } catch { return null; }
-      })
-    );
-
-    allEntries = entries
-      .filter(Boolean)
-      .sort((a, b) => (b.submitted || '').localeCompare(a.submitted || ''));
-
+    if (!res.ok) throw new Error(`catalog fetch failed: ${res.status}`);
+    const catalog = await res.json();
+    const entries = (catalog.submissions || []).slice().reverse(); // newest first
+    allEntries = entries;
     renderGallery(allEntries);
   } catch (err) {
     console.error('Gallery load failed:', err);
