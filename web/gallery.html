@@ -274,25 +274,86 @@ nav {
   display: flex;
   flex-direction: column;
   overflow: hidden;
+  transition: border-radius 0.2s;
+}
+.modal.fullscreen {
+  width: 100vw !important;
+  max-width: 100vw;
+  height: 100vh;
+  max-height: 100vh;
+  border-radius: 0;
+  position: fixed;
+  inset: 0;
 }
 .modal-header {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  padding: 16px 20px;
+  gap: 10px;
+  padding: 10px 14px;
   border-bottom: 1px solid rgba(255,255,255,0.07);
+  flex-wrap: wrap;
 }
-.modal-title { font-weight: 700; font-size: 1rem; }
+.modal-title {
+  font-weight: 700;
+  font-size: 0.95rem;
+  flex: 1;
+  min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.modal-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+.modal-btn {
+  background: var(--surface2);
+  border: 1px solid rgba(255,255,255,0.09);
+  color: var(--text-dim);
+  border-radius: 6px;
+  padding: 4px 9px;
+  font-size: 0.78rem;
+  cursor: pointer;
+  transition: background 0.12s, color 0.12s;
+  white-space: nowrap;
+}
+.modal-btn:hover { background: #2a2a3e; color: var(--text); }
+.modal-btn.active { background: var(--accent); color: #fff; border-color: var(--accent); }
+.modal-select {
+  background: var(--surface2);
+  border: 1px solid rgba(255,255,255,0.09);
+  color: var(--text);
+  border-radius: 6px;
+  padding: 4px 8px;
+  font-size: 0.78rem;
+  cursor: pointer;
+}
+.modal-select:focus { outline: none; border-color: var(--accent); }
+.opacity-wrap {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.78rem;
+  color: var(--text-dim);
+}
+.opacity-wrap input[type=range] {
+  width: 80px;
+  accent-color: var(--accent);
+  cursor: pointer;
+}
 .modal-close {
   background: none;
   border: none;
   color: var(--text-dim);
-  font-size: 1.4rem;
+  font-size: 1.3rem;
   cursor: pointer;
   line-height: 1;
   padding: 2px 6px;
   border-radius: 4px;
   transition: background 0.1s;
+  flex-shrink: 0;
 }
 .modal-close:hover { background: rgba(255,255,255,0.08); color: var(--text); }
 #modal-map { flex: 1; min-height: 500px; }
@@ -370,10 +431,29 @@ hillgen publish --gallery \
 
 <!-- Map modal -->
 <div class="modal-overlay" id="modal-overlay" onclick="closeModal(event)">
-  <div class="modal">
+  <div class="modal" id="modal">
     <div class="modal-header">
       <div class="modal-title" id="modal-title">—</div>
-      <button class="modal-close" onclick="closeMapModal()">×</button>
+      <div class="modal-toolbar">
+        <!-- Basemap -->
+        <select class="modal-select" id="basemap-select" onchange="setBasemap(this.value)" title="Basemap">
+          <option value="osm">OSM</option>
+          <option value="satellite">Satellite</option>
+          <option value="topo">Topo</option>
+          <option value="none">None</option>
+        </select>
+        <!-- Opacity -->
+        <div class="opacity-wrap">
+          <span>opacity</span>
+          <input type="range" id="opacity-slider" min="0" max="100" value="100"
+            oninput="setHillshadeOpacity(this.value)" title="Hillshade opacity">
+          <span id="opacity-val">100%</span>
+        </div>
+        <!-- Fullscreen -->
+        <button class="modal-btn" id="fullscreen-btn" onclick="toggleFullscreen()" title="Fullscreen">⛶</button>
+        <!-- Close -->
+        <button class="modal-close" onclick="closeMapModal()">×</button>
+      </div>
     </div>
     <div id="modal-map"></div>
   </div>
@@ -460,6 +540,29 @@ function showEmpty() {
 }
 
 // ── Map modal ─────────────────────────────────────────────────────────────
+let hillshadeLayer = null;
+let basemapLayer = null;
+let isFullscreen = false;
+
+const BASEMAPS = {
+  osm: {
+    url: 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
+    attribution: '© OpenStreetMap contributors',
+    maxZoom: 20,
+  },
+  satellite: {
+    url: 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
+    attribution: '© Esri, Maxar, Earthstar Geographics',
+    maxZoom: 19,
+  },
+  topo: {
+    url: 'https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png',
+    attribution: '© OpenTopoMap contributors',
+    maxZoom: 17,
+  },
+  none: null,
+};
+
 function openMapModal(index) {
   const entry = allEntries[index];
   if (!entry?.pmtiles) return;
@@ -468,63 +571,103 @@ function openMapModal(index) {
     (entry.title || 'Map') + (entry.author ? ` · ${entry.author}` : '');
   document.getElementById('modal-overlay').classList.add('open');
 
-  // Small delay to let the modal render before initializing the map
+  // Reset controls
+  document.getElementById('opacity-slider').value = 100;
+  document.getElementById('opacity-val').textContent = '100%';
+  document.getElementById('basemap-select').value = 'osm';
+
   setTimeout(() => initModalMap(entry), 50);
 }
 
 function initModalMap(entry) {
-  if (modalMap) {
-    modalMap.remove();
-    modalMap = null;
-  }
+  if (modalMap) { modalMap.remove(); modalMap = null; }
+  hillshadeLayer = null;
+  basemapLayer = null;
 
   const container = document.getElementById('modal-map');
   container.innerHTML = '';
 
   modalMap = L.map(container, { zoomControl: true });
 
-  // PMTiles layer
+  // Basemap (OSM default, below hillshade)
+  _addBasemap('osm');
+
+  // PMTiles hillshade layer on top
   const pmt = new pmtiles.PMTiles(entry.pmtiles);
-  const layer = pmtiles.leafletRasterLayer(pmt, {
+  hillshadeLayer = pmtiles.leafletRasterLayer(pmt, {
     attribution: entry.author ? `© ${entry.author}` : '',
     maxNativeZoom: 18,
     maxZoom: 20,
+    opacity: 1.0,
+    pane: 'overlayPane',
   });
-  layer.addTo(modalMap);
+  hillshadeLayer.addTo(modalMap);
 
-  // Base OSM layer underneath
-  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-    attribution: '© OpenStreetMap',
-    opacity: 0.25,
-    maxZoom: 20,
-  }).addTo(modalMap);
-
-  // Fit to PMTiles bounds if available
+  // Fit to PMTiles bounds
   pmt.getHeader().then(header => {
     if (header.minLon !== undefined) {
-      const bounds = L.latLngBounds(
-        [header.minLat, header.minLon],
-        [header.maxLat, header.maxLon]
+      modalMap.fitBounds(
+        L.latLngBounds([header.minLat, header.minLon], [header.maxLat, header.maxLon]),
+        { padding: [20, 20] }
       );
-      modalMap.fitBounds(bounds, { padding: [20, 20] });
     } else {
-      modalMap.setView([39.5, -86.0], 8); // Indiana default
+      modalMap.setView([39.5, -86.0], 8);
     }
   }).catch(() => modalMap.setView([39.5, -86.0], 8));
 }
 
+function _addBasemap(key) {
+  if (basemapLayer) { modalMap.removeLayer(basemapLayer); basemapLayer = null; }
+  const def = BASEMAPS[key];
+  if (!def) return;
+  basemapLayer = L.tileLayer(def.url, {
+    attribution: def.attribution,
+    maxZoom: def.maxZoom,
+    pane: 'tilePane',
+  });
+  // Insert below hillshade
+  basemapLayer.addTo(modalMap);
+  if (hillshadeLayer) hillshadeLayer.bringToFront();
+}
+
+function setBasemap(key) {
+  if (!modalMap) return;
+  _addBasemap(key);
+}
+
+function setHillshadeOpacity(val) {
+  document.getElementById('opacity-val').textContent = val + '%';
+  if (hillshadeLayer) hillshadeLayer.setOpacity(val / 100);
+}
+
+function toggleFullscreen() {
+  const modal = document.getElementById('modal');
+  const btn = document.getElementById('fullscreen-btn');
+  isFullscreen = !isFullscreen;
+  modal.classList.toggle('fullscreen', isFullscreen);
+  btn.classList.toggle('active', isFullscreen);
+  btn.textContent = isFullscreen ? '⋯' : '⛶';
+  btn.title = isFullscreen ? 'Exit fullscreen' : 'Fullscreen';
+  // Nudge Leaflet to recalculate size
+  setTimeout(() => modalMap && modalMap.invalidateSize(), 50);
+}
+
 function closeMapModal() {
+  // Exit fullscreen first if active
+  if (isFullscreen) toggleFullscreen();
   document.getElementById('modal-overlay').classList.remove('open');
   if (modalMap) { modalMap.remove(); modalMap = null; }
+  hillshadeLayer = null;
+  basemapLayer = null;
 }
 
 function closeModal(e) {
-  if (e.target === document.getElementById('modal-overlay')) closeModal2();
+  if (e.target === document.getElementById('modal-overlay')) closeMapModal();
 }
-function closeModal2() { closeMapModal(); }
 
 document.addEventListener('keydown', e => {
   if (e.key === 'Escape') closeMapModal();
+  if (e.key === 'f' && document.getElementById('modal-overlay').classList.contains('open')) toggleFullscreen();
 });
 
 // ── Utilities ─────────────────────────────────────────────────────────────
