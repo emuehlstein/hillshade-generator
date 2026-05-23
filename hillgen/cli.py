@@ -820,27 +820,40 @@ def publish(path, dry_run, gallery, title, caption, author, preview):
             click.echo(f"✓ Preview: {preview_url}")
 
         if gallery:
-            # Write a sidecar .json entry so the gallery page can discover it
-            entry = {
+            # Fetch current gallery catalog, append entry, write back
+            catalog_key = "gallery/catalog.json"
+            try:
+                obj = s3.get_object(Bucket=bucket, Key=catalog_key)
+                catalog = json.loads(obj["Body"].read())
+            except s3.exceptions.NoSuchKey:
+                catalog = {"submissions": []}
+            except ClientError as e:
+                if e.response["Error"]["Code"] == "NoSuchKey":
+                    catalog = {"submissions": []}
+                else:
+                    raise
+
+            new_entry = {
                 "pmtiles": f"https://scriptedrelief.com/{key}",
                 "preview": preview_url,
                 "title": title or p.stem,
                 "caption": caption or "",
                 "author": author or "anonymous",
                 "size_mb": round(size_mb, 1),
-                "submitted": datetime.datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%SZ"),
+                "submitted": datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
             }
-            entry_key = f"{prefix}{p.stem}.json"
+            catalog["submissions"].append(new_entry)
+
             s3.put_object(
                 Bucket=bucket,
-                Key=entry_key,
-                Body=json.dumps(entry, indent=2).encode(),
+                Key=catalog_key,
+                Body=json.dumps(catalog, indent=2).encode(),
                 ContentType="application/json",
                 CacheControl="public, max-age=60",
             )
-            click.echo(f"✓ Entry:   https://scriptedrelief.com/{entry_key}")
+            click.echo(f"✓ Catalog: https://scriptedrelief.com/{catalog_key}")
             click.echo("")
-            click.echo("Submission uploaded! It will appear in the gallery shortly.")
+            click.echo(f"Submission uploaded! {len(catalog['submissions'])} total in gallery.")
         else:
             click.echo(f"Published: https://scriptedrelief.com/{key}")
             click.echo("Note: catalog.json update not yet implemented.")
