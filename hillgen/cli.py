@@ -9,14 +9,185 @@ Usage:
     hillgen run --place "Crater Lake" --theme midnight
 """
 
+import math
 import shutil
 import subprocess
 import sys
 from pathlib import Path
+from typing import Optional
 
 import click
 
 from . import __version__
+
+
+# ── Run estimate / sanity check ────────────────────────────────────────────────
+
+# Empirical tile-size medians by zoom level (PNG, hillshade)
+# Values calibrated from Cook County 3DEP + La Porte LiDAR runs
+_TILE_KB = {
+    10: 4, 11: 8, 12: 16, 13: 30, 14: 55, 15: 75, 16: 88, 17: 95, 18: 100, 19: 105, 20: 110,
+}
+
+# Rough DEM download size per square degree by source
+_DEM_MB_PER_SQ_DEG = {
+    "usgs-3dep-10m": 40,
+    "igic-indiana-lidar": 500,   # 16MB tiles, ~5000ft x 5000ft, ~30 tiles/deg²
+    "wi-dnr-lidar":      400,
+    "nps-sfm-rainier-2021": 800,
+}
+_DEM_MB_PER_SQ_DEG_DEFAULT = 50
+
+# Rough processing time constants (seconds)
+_SHADE_SEC_PER_SQ_DEG = {"usgs-3dep-10m": 5, "igic-indiana-lidar": 30}
+_SHADE_SEC_DEFAULT = 8
+_TILE_SEC_PER_TILE = 0.45
+
+
+def _count_tiles(west: float, south: float, east: float, north: float,
+                 min_zoom: int, max_zoom: int) -> int:
+    """Estimate XYZ tile count for a bounding box and zoom range."""
+    total = 0
+    for z in range(min_zoom, max_zoom + 1):
+        n = 2 ** z
+        x0 = int((west + 180) / 360 * n)
+        x1 = int((east + 180) / 360 * n)
+        y0 = int((1 - math.log(math.tan(math.radians(north)) + 1 / math.cos(math.radians(north))) / math.pi) / 2 * n)
+        y1 = int((1 - math.log(math.tan(math.radians(south)) + 1 / math.cos(math.radians(south))) / math.pi) / 2 * n)
+        total += max(1, (x1 - x0 + 1)) * max(1, (y1 - y0 + 1))
+    return total
+
+
+def _format_time(seconds: float) -> str:
+    if seconds < 60:
+        return f"{int(seconds)}s"
+    if seconds < 3600:
+        return f"{int(seconds / 60)}m"
+    h = int(seconds / 3600)
+    m = int((seconds % 3600) / 60)
+    return f"{h}h {m}m" if m else f"{h}h"
+
+
+def _format_size(mb: float) -> str:
+    if mb >= 1024:
+        return f"{mb / 1024:.1f} GB"
+    return f"{int(mb)} MB"
+
+
+def estimate_run(
+    bbox,           # BBox namedtuple with .west .south .east .north
+    dem: str,
+    zoom: str,      # e.g. "10-16"
+    dem_cached: bool = False,
+    styled_cached: bool = False,
+) -> dict:
+    """Return a dict of estimates for a hillgen run."""
+    from .pipeline.tiler import parse_zoom
+    min_z, max_z = parse_zoom(zoom)
+
+    w, s, e, n = bbox.west, bbox.south, bbox.east, bbox.north
+    area_sq_deg = abs(e - w) * abs(n - s)
+
+    # Tile count
+    tile_count = _count_tiles(w, s, e, n, min_z, max_z)
+
+    # MBTiles size estimate
+    size_kb = sum(
+        _count_tiles(w, s, e, n, z, z) * _TILE_KB.get(z, 100)
+        for z in range(min_z, max_z + 1)
+    )
+    size_mb = size_kb / 1024
+
+    # DEM download size
+    mb_per_sq = _DEM_MB_PER_SQ_DEG.get(dem, _DEM_MB_PER_SQ_DEG_DEFAULT)
+    dem_mb = area_sq_deg * mb_per_sq
+
+    # Time estimate
+    shade_sec = 0 if styled_cached else area_sq_deg * _SHADE_SEC_PER_SQ_DEG.get(dem, _SHADE_SEC_DEFAULT)
+    tile_sec = 0 if styled_cached else tile_count * _TILE_SEC_PER_TILE
+    total_sec = shade_sec + tile_sec
+
+    return {
+        "tile_count": tile_count,
+        "size_mb": size_mb,
+        "dem_mb": dem_mb,
+        "total_sec": total_sec,
+        "min_zoom": min_z,
+        "max_zoom": max_z,
+        "area_sq_deg": area_sq_deg,
+        "width_deg": abs(e - w),
+        "height_deg": abs(n - s),
+    }
+
+
+def print_estimate(est: dict, dem: str, theme: str, exaggeration: Optional[float]) -> None:
+    """Pretty-print the run estimate."""
+    click.echo("")
+    click.echo("┌─ Run estimate ─────────────────────────────────────────────────")
+    click.echo(f"│  Source:      {dem}")
+    click.echo(f"│  Theme:       {theme}" + (f"  {exaggeration}x exaggeration" if exaggeration else ""))
+    click.echo(f"│  Zoom:        z{est['min_zoom']}–{est['max_zoom']}")
+    click.echo(f"│  Area:        {est['width_deg']:.2f}° × {est['height_deg']:.2f}°  ({est['area_sq_deg']:.4f} sq°)")
+    click.echo(f"│  Tiles:       ~{est['tile_count']:,}")
+    click.echo(f"│  Output:      ~{_format_size(est['size_mb'])} MBTiles/PMTiles")
+    click.echo(f"│  DEM:         ~{_format_size(est['dem_mb'])} download")
+    click.echo(f"│  Time:        ~{_format_time(est['total_sec'])}")
+    click.echo("└─────────────────────────────────────────────────────")
+
+
+# Thresholds for warnings / confirmation prompts
+_WARN_TILES = 50_000
+_WARN_SIZE_MB = 500
+_WARN_DEM_MB = 2_000
+_WARN_TIME_SEC = 30 * 60
+_BLOCK_TILES = 2_000_000   # refuse without --force
+
+
+def sanity_check(
+    est: dict,
+    force: bool = False,
+    yes: bool = False,
+) -> bool:
+    """
+    Print warnings for large runs and prompt for confirmation when thresholds
+    are exceeded.  Returns True if the run should proceed, False to abort.
+    """
+    warnings = []
+
+    if est["tile_count"] > _BLOCK_TILES:
+        click.echo(
+            click.style(
+                f"\n⛔  {est['tile_count']:,} tiles exceeds the hard limit of {_BLOCK_TILES:,}."
+                " Use --max-zoom to reduce the zoom range, or a smaller --bbox.",
+                fg="red", bold=True,
+            )
+        )
+        return False
+
+    if est["tile_count"] > _WARN_TILES:
+        warnings.append(f"⚠️  {est['tile_count']:,} tiles — tiling alone will take ~{_format_time(est['tile_count'] * _TILE_SEC_PER_TILE)}")
+    if est["size_mb"] > _WARN_SIZE_MB:
+        warnings.append(f"⚠️  Output ~{_format_size(est['size_mb'])} — make sure you have disk space")
+    if est["dem_mb"] > _WARN_DEM_MB:
+        warnings.append(f"⚠️  DEM download ~{_format_size(est['dem_mb'])} — may take several minutes")
+    if est["total_sec"] > _WARN_TIME_SEC:
+        warnings.append(f"⚠️  Estimated time ~{_format_time(est['total_sec'])} — consider running in the background")
+    if est["max_zoom"] >= 18:
+        warnings.append(f"⚠️  z{est['max_zoom']} tiles are near or beyond LiDAR native resolution — interpolated pixels above z17")
+
+    if not warnings:
+        return True
+
+    click.echo("")
+    for w in warnings:
+        click.echo(click.style(w, fg="yellow"))
+
+    if force or yes:
+        return True
+
+    click.echo("")
+    return click.confirm("Proceed anyway?", default=False)
+
 
 
 @click.group()
@@ -560,11 +731,55 @@ def package(bbox, place, dem, theme_name, exaggeration, zoom, output_format, out
 @click.option("--buffer", "buffer_deg", type=float, default=None, help="Buffer in degrees around area (default 0.1° ≈ 11km)")
 @click.option("--stop-after", type=click.Choice(["fetch", "reproject", "shade", "style", "tile", "package"]))
 @click.option("--start-from", type=click.Choice(["fetch", "reproject", "shade", "style", "tile", "package"]))
+@click.option("--yes", "-y", is_flag=True, help="Skip confirmation prompts for large runs")
+@click.option("--force", is_flag=True, help="Skip all sanity checks including hard limits")
+@click.option("--estimate", is_flag=True, help="Show size/time estimate and exit without running")
 def run(bbox, place, theme, exaggeration, dem, zoom, output_format, output,
-        keep_intermediates, contribute, no_cache, s3_cache, buffer_deg, stop_after, start_from):
+        keep_intermediates, contribute, no_cache, s3_cache, buffer_deg, stop_after, start_from,
+        yes, force, estimate):
     """Full pipeline: fetch → reproject → shade → style → tile → package."""
     resolved_bbox = _resolve_bbox(bbox, place, buffer_deg=buffer_deg)
     cb = lambda msg: click.echo(msg)
+
+    # ── Estimate + sanity check ────────────────────────────────────────────
+    from .cache import ensure_cache_dir as _ecd
+    from .pipeline.tiler import parse_zoom as _pz
+    from .sources import resolve_source as _rs
+    _min_z, _max_z = _pz(zoom)
+    # Resolve DEM source name for accurate estimates
+    _dem_name = dem
+    try:
+        from .sources.base import BBox as _BBox
+        _est_bbox = _BBox(resolved_bbox.west, resolved_bbox.south, resolved_bbox.east, resolved_bbox.north)
+        _src = _rs(_est_bbox, dem)
+        _dem_name = _src.name
+    except Exception:
+        _dem_name = dem if dem != "auto" else "usgs-3dep-10m"
+
+    # Check if costly stages are already cached
+    _styled_cached = False
+    try:
+        _theme_obj = None
+        from .themes import get_theme as _gt
+        _theme_obj = _gt(theme)
+        _exag_val = float(exaggeration) if exaggeration else (
+            _theme_obj.get_exaggeration_value() if _theme_obj else 3.0
+        )
+        from .pipeline.reprojector import output_filename as _rfn
+        from .cache import get_cache_dir as _gcd
+        _styled_dir = _gcd() / "styled"
+        _styled_cached = any(_styled_dir.glob("*.tif")) if _styled_dir.exists() else False
+    except Exception:
+        _exag_val = float(exaggeration) if exaggeration else 3.0
+
+    _est = estimate_run(resolved_bbox, _dem_name, zoom, styled_cached=_styled_cached)
+    print_estimate(_est, _dem_name, theme, _exag_val)
+
+    if estimate:
+        return
+
+    if not force and not sanity_check(_est, force=force, yes=yes):
+        raise SystemExit(0)
 
     # Stages in order
     stages = ["fetch", "reproject", "shade", "style", "tile", "package"]
