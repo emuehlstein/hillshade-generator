@@ -956,7 +956,13 @@ def view(path, port):
 @click.option("--caption", type=str, default=None, help="Short description for gallery entry")
 @click.option("--author", type=str, default=None, help="Your name or handle")
 @click.option("--preview", type=click.Path(exists=True), default=None, help="Preview PNG to upload alongside")
-def publish(path, dry_run, gallery, title, caption, author, preview):
+@click.option("--area", type=str, default=None, help="Area slug for catalog entry (e.g. kennecott)")
+@click.option("--name", "display_name", type=str, default=None, help="Display name for catalog entry")
+@click.option("--theme", type=str, default=None, help="Theme name for catalog entry")
+@click.option("--description", type=str, default=None, help="Description for catalog entry")
+@click.option("--tags", type=str, default=None, help="Comma-separated tags for catalog entry")
+@click.option("--no-catalog", is_flag=True, help="Skip catalog.json update")
+def publish(path, dry_run, gallery, title, caption, author, preview, area, display_name, theme, description, tags, no_catalog):
     """Publish a PMTiles file to scriptedrelief.com.
 
     Default: uploads to tiles/ (curator use).
@@ -1079,7 +1085,65 @@ def publish(path, dry_run, gallery, title, caption, author, preview):
             click.echo(f"Submission uploaded! {len(catalog['submissions'])} total in gallery.")
         else:
             click.echo(f"Published: https://scriptedrelief.com/{key}")
-            click.echo("Note: catalog.json update not yet implemented.")
+            if no_catalog:
+                click.echo("Skipping catalog.json update (--no-catalog).")
+            else:
+                # Parse metadata from filename if not provided
+                # Expected pattern: {source}_{lat}_{lon}_{crs}_{theme}_{exag}x.pmtiles
+                import re
+                stem = p.stem  # e.g. 3dep_n40.53_w112.14_4326_vivid-elevation_9.0x
+                parsed_theme = None
+                parsed_exag = None
+                m = re.search(r'_([a-z][a-z0-9-]+)_([0-9]+(?:\.[0-9]+)?)x$', stem)
+                if m:
+                    parsed_theme = m.group(1)
+                    parsed_exag = float(m.group(2))
+
+                catalog_key = "catalog.json"
+                try:
+                    obj = s3.get_object(Bucket=bucket, Key=catalog_key)
+                    catalog = json.loads(obj["Body"].read())
+                except ClientError as e:
+                    if e.response["Error"]["Code"] == "NoSuchKey":
+                        catalog = {"generated": "", "layers": []}
+                    else:
+                        raise
+
+                pmtiles_rel = f"tiles/{p.name}"
+                pmtiles_url = f"https://scriptedrelief.com/{pmtiles_rel}"
+
+                # Dedupe by pmtiles path
+                existing = [l for l in catalog.get("layers", []) if l.get("pmtiles") == pmtiles_rel]
+                if existing:
+                    click.echo(f"Already in catalog: {pmtiles_rel}")
+                else:
+                    entry = {
+                        "area": area or stem,
+                        "name": display_name or area or stem,
+                        "theme": theme or parsed_theme or "",
+                        "description": description or "",
+                        "exaggeration": parsed_exag or 1.0,
+                        "dem_source": "USGS 3DEP 1/3 arc-second",
+                        "zoom": [10, 16],
+                        "pmtiles": pmtiles_rel,
+                        "size_mb": round(size_mb, 1),
+                    }
+                    if tags:
+                        entry["tags"] = [t.strip() for t in tags.split(",")]
+                    if preview_url:
+                        entry["preview"] = preview_url
+
+                    catalog.setdefault("layers", []).append(entry)
+                    catalog["generated"] = datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+
+                    s3.put_object(
+                        Bucket=bucket,
+                        Key=catalog_key,
+                        Body=json.dumps(catalog, indent=2).encode(),
+                        ContentType="application/json",
+                        CacheControl="public, max-age=60",
+                    )
+                    click.echo(f"✓ Catalog: https://scriptedrelief.com/{catalog_key} ({len(catalog['layers'])} layers)")
 
     except NoCredentialsError:
         click.echo("Error: no AWS credentials found.")
