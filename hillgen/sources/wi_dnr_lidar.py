@@ -11,8 +11,8 @@ and mosaicked with rasterio.merge.
 """
 
 import math
+import os
 import subprocess
-import tempfile
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
 from typing import List, Optional, Tuple
@@ -235,41 +235,66 @@ class WiDNRLiDAR:
         return clipped
 
     def _mosaic(self, paths: List[Path], output_dir: Path) -> Path:
-        """Merge multiple GeoTIFF tiles into one using rasterio.merge."""
+        """Mosaic chunk GeoTIFFs into a VRT (cheap, returns immediately).
+
+        Uses ``gdalbuildvrt`` against a deterministic file list written to
+        ``output_dir`` (same volume as the output) — avoids the
+        :class:`tempfile.NamedTemporaryFile` race on macOS where buffered
+        writes to ``/var/folders`` were occasionally read partially by
+        ``gdalbuildvrt`` and produced a wrong-extent VRT (issue #5).
+
+        Returns a VRT path rather than materializing the mosaic to disk —
+        downstream ``gdalwarp`` streams from it directly, saving ~10min on
+        multi-billion-pixel mosaics.
+        """
+        out_vrt = output_dir / "_wi_dnr_mosaic.vrt"
+        flist_path = output_dir / "_wi_dnr_chunk_list.txt"
+
+        # Sort for reproducibility, write+flush atomically.
+        ordered = [str(p) for p in sorted(paths)]
+        flist_path.write_text("\n".join(ordered) + "\n")
+
+        cmd = [
+            "gdalbuildvrt",
+            "-input_file_list", str(flist_path),
+            str(out_vrt),
+        ]
+        result = subprocess.run(cmd, capture_output=True, text=True)
+        if result.returncode != 0:
+            raise RuntimeError(f"gdalbuildvrt failed: {result.stderr}")
+
+        # Sanity-check the VRT covers all chunks (catches partial-list reads).
         try:
             import rasterio
-            from rasterio.merge import merge
-
-            datasets = [rasterio.open(p) for p in paths]
-            mosaic, transform = merge(datasets)
-            meta = datasets[0].meta.copy()
-            meta.update({
-                "driver": "GTiff",
-                "height": mosaic.shape[1],
-                "width": mosaic.shape[2],
-                "transform": transform,
-                "compress": "deflate",
-                "tiled": True,
-            })
-            out = output_dir / "_wi_dnr_mosaic.tif"
-            with rasterio.open(out, "w", **meta) as dst:
-                dst.write(mosaic)
-            for ds in datasets:
-                ds.close()
-            return out
+            with rasterio.open(out_vrt) as vrt:
+                vrt_w, vrt_h = vrt.width, vrt.height
+            # Sum of input pixel counts is a lower bound on the mosaic extent.
+            # If the VRT is dramatically smaller than the inputs, the file
+            # list was likely read incompletely.
+            with rasterio.open(paths[0]) as sample:
+                px_per_chunk = sample.width * sample.height
+            expected_min_px = px_per_chunk * len(paths) * 0.5
+            if vrt_w * vrt_h < expected_min_px:
+                raise RuntimeError(
+                    f"Mosaic VRT covers only {vrt_w}x{vrt_h}px, "
+                    f"expected at least {expected_min_px:.0f}px from "
+                    f"{len(paths)} chunks — gdalbuildvrt may have read a "
+                    f"truncated file list (see issue #5)."
+                )
         except ImportError:
-            # Fall back to gdal_merge.py
-            out = output_dir / "_wi_dnr_mosaic.tif"
-            cmd = [
-                "gdal_merge.py", "-o", str(out),
-                "-co", "COMPRESS=DEFLATE",
-                "-co", "BIGTIFF=IF_SAFER",
-            ] + [str(p) for p in paths]
-            subprocess.run(cmd, check=True, capture_output=True, text=True)
-            return out
+            pass
+
+        return out_vrt
 
     def _reproject_and_clip(self, src: Path, dst: Path, bbox: BBox):
-        """Reproject from EPSG:3071 → EPSG:4326 and clip to WGS84 bbox in one pass."""
+        """Reproject from EPSG:3071 → EPSG:4326 and clip to WGS84 bbox in one pass.
+
+        Pins GDAL temp directories to the output volume (issue #4) so a small
+        ``/tmp`` partition cannot trigger a silent disk-full failure that
+        leaves an all-nodata raster on disk. Validates the result after the
+        warp so any such corruption surfaces immediately instead of
+        propagating through the rest of the pipeline.
+        """
         cmd = [
             "gdalwarp",
             "-s_srs", "EPSG:3071",
@@ -282,9 +307,20 @@ class WiDNRLiDAR:
             "-co", "BIGTIFF=IF_SAFER",
             str(src), str(dst),
         ]
-        result = subprocess.run(cmd, capture_output=True, text=True)
+        env = {
+            **os.environ,
+            "GDAL_TMPDIR": str(dst.parent),
+            "CPL_TMPDIR": str(dst.parent),
+        }
+        result = subprocess.run(cmd, capture_output=True, text=True, env=env)
         if result.returncode != 0:
             raise RuntimeError(f"gdalwarp reproject+clip failed: {result.stderr}")
+
+        # Validate: gdalwarp can exit 0 while producing an all-nodata raster
+        # when the disk fills mid-write. Sample the center and bail loudly
+        # so the bad file isn't cached and propagated downstream (issue #4).
+        from ..pipeline.integrity import assert_has_data
+        assert_has_data(dst)
 
     def _output_filename(self, bbox: BBox) -> str:
         lat = (bbox.south + bbox.north) / 2

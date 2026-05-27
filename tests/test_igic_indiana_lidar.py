@@ -208,8 +208,8 @@ def test_auto_selects_igic_for_indiana():
 
 
 def test_auto_selects_usgs_outside_indiana():
-    """resolve_source should fall back to USGS 3DEP outside IN."""
-    bbox = BBox(-87.9, 41.7, -87.6, 42.1)  # Chicago area
+    """resolve_source should fall back to USGS 3DEP outside any state-LiDAR coverage."""
+    bbox = BBox(-105.1, 39.6, -104.9, 39.8)  # Denver — no state LiDAR source
     source = resolve_source(bbox)
     assert source.name == "usgs-3dep-10m"
 
