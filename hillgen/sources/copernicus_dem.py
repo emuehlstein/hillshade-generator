@@ -122,16 +122,15 @@ class CopernicusDEM30m:
     def _tiles_for_bbox(self, bbox: BBox) -> List[Tuple[str, str]]:
         """Return list of (tile_name, url) covering the bbox.
 
-        Each 1°×1° tile is labelled by the corner closest to (0,0):
-            - latitude: floor(lat_south) for positive lats; -ceil(lat_south)
-              for negative lats — but since each integer band [k, k+1] gets
-              a single label, the rule simplifies to:
-                * k >= 0  → "N{k:02d}"
-                * k <  0  → "S{abs(k+1):02d}"   (because the band [-3,-2]
-                  is the "S2" tile — north edge is -2)
-            - longitude (symmetric):
-                * k >= 0  → "E{k:03d}"
-                * k <  0  → "W{abs(k+1):03d}"
+        Copernicus DEM tile naming uses the **SW corner** of each 1°×1°
+        tile (same convention as SRTM). Verified against
+        ``Copernicus_DSM_COG_10_N23_00_W110_00_DEM`` which has
+        UpperLeft=(-110, 24) / LowerRight=(-109, 23) — i.e. the "W110"
+        tile covers ``lon ∈ [-110, -109]``, not ``[-111, -110]``.
+
+        So for a band ``[k, k+1]``:
+            - latitude:  ``k >= 0  → "N{k:02d}"``;  ``k < 0  → "S{abs(k):02d}"``
+            - longitude: ``k >= 0  → "E{k:03d}"``;  ``k < 0  → "W{abs(k):03d}"``
         """
         tiles = []
 
@@ -150,13 +149,13 @@ class CopernicusDEM30m:
             if lat >= 0:
                 lat_label = f"N{lat:02d}"
             else:
-                lat_label = f"S{abs(lat + 1):02d}"
+                lat_label = f"S{abs(lat):02d}"
 
             for lon in range(lon_min, lon_max + 1):
                 if lon >= 0:
                     lon_label = f"E{lon:03d}"
                 else:
-                    lon_label = f"W{abs(lon + 1):03d}"
+                    lon_label = f"W{abs(lon):03d}"
 
                 tile_id = f"Copernicus_DSM_COG_10_{lat_label}_00_{lon_label}_00_DEM"
                 url = f"{_S3_BASE}/{tile_id}/{tile_id}.tif"
