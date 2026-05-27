@@ -33,20 +33,31 @@ class USGS3DEP10m:
     resolution_m = 10.0
     priority = 80
 
-    # Approximate CONUS + AK + HI coverage
-    _coverage_west = -180.0
-    _coverage_east = -60.0
-    _coverage_south = 15.0
-    _coverage_north = 72.0
+    # 3DEP is US-only. Use a small set of rectangles that hug the southern
+    # border so the resolver doesn't claim Mexico / Caribbean / Canada
+    # coverage just because the bbox sits in a loose -180..-60 / 15..72 box
+    # (the 1° tiles for those regions don't exist on prd-tnm and would 404
+    # mid-download).
+    _coverage_rects = (
+        # CONUS, split by southern border:
+        #   Pacific (CA south edge ~32.53°N)
+        (-125.5, 32.55, -114.5, 49.5),
+        #   Mountain (AZ/NM south edge ~31.33°N)
+        (-114.7, 31.33, -103.0, 49.5),
+        #   Plains/East/TX-tip (TX south edge ~25.84°N)
+        (-106.7, 25.84, -66.5, 49.5),
+        # Alaska
+        (-180.0, 51.0, -129.0, 72.0),
+        # Hawaii
+        (-161.0, 18.5, -154.5, 22.5),
+    )
 
     def covers(self, bbox: BBox) -> bool:
-        """Check if bbox is within approximate US coverage."""
-        return (
-            bbox.west >= self._coverage_west
-            and bbox.east <= self._coverage_east
-            and bbox.south >= self._coverage_south
-            and bbox.north <= self._coverage_north
-        )
+        """True if bbox is fully inside one of the 3DEP coverage rectangles."""
+        for w, s, e, n in self._coverage_rects:
+            if bbox.west >= w and bbox.east <= e and bbox.south >= s and bbox.north <= n:
+                return True
+        return False
 
     def download(self, bbox: BBox, output_dir: Path, progress_cb=None) -> Path:
         """Download 3DEP tiles covering bbox, merge if needed, clip to bbox.

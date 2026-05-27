@@ -6,6 +6,7 @@ from .nps_sfm_rainier import NPSSfMRainier2021
 from .wi_dnr_lidar import WiDNRLiDAR
 from .igic_indiana_lidar import IGICIndianaLiDAR
 from .isgs_ilhmp import ISGSILHMPSource
+from .copernicus_dem import CopernicusDEM30m
 
 # Built-in sources, ordered by priority (highest first).
 # resolve_source(auto) picks the first source whose covers(bbox) is True.
@@ -16,6 +17,7 @@ _SOURCES = [
     ISGSILHMPSource(),     # priority=88 — 0.3m,  Illinois only (all 102 counties)
     WiDNRLiDAR(),          # priority=90 — 1m,    Wisconsin only
     USGS3DEP10m(),         # priority=80 — 10m,   CONUS/AK/HI fallback
+    CopernicusDEM30m(),    # priority=10 — 30m,   global last-resort
 ]
 
 # Lookup by name
