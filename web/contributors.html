@@ -1,0 +1,389 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Contributors — Scripted Relief</title>
+<meta name="description" content="How to contribute hillshades, intermediates, and code to Scripted Relief and the hillgen project.">
+<meta property="og:title" content="Contributors — Scripted Relief">
+<meta property="og:description" content="How to contribute hillshades and intermediates to hillgen.">
+<meta property="og:type" content="website">
+<meta property="og:url" content="https://scriptedrelief.com/contributors.html">
+<style>
+:root {
+  --bg: #0a0a0f;
+  --surface: #14141f;
+  --surface2: #1e1e2e;
+  --text: #e0e0e8;
+  --text-dim: #8888a0;
+  --accent: #5b8def;
+  --accent-hover: #7ba5ff;
+  --radius: 10px;
+}
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  line-height: 1.6;
+  min-height: 100vh;
+}
+a { color: var(--accent); text-decoration: none; }
+a:hover { color: var(--accent-hover); }
+
+/* ── Nav ── */
+nav {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 18px 32px;
+  background: var(--surface);
+  border-bottom: 1px solid rgba(255,255,255,0.06);
+  position: sticky;
+  top: 0;
+  z-index: 100;
+}
+.nav-logo {
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: var(--text);
+  letter-spacing: -0.3px;
+}
+.nav-logo span { color: var(--accent); }
+.nav-links { display: flex; gap: 24px; font-size: 0.9rem; color: var(--text-dim); }
+.nav-links a { color: var(--text-dim); }
+.nav-links a:hover { color: var(--text); }
+.nav-links a.active { color: var(--accent); }
+
+/* ── Hero ── */
+.page-hero {
+  padding: 72px 32px 48px;
+  text-align: center;
+  border-bottom: 1px solid rgba(255,255,255,0.05);
+}
+.page-hero h1 {
+  font-size: clamp(2rem, 4vw, 3rem);
+  font-weight: 800;
+  letter-spacing: -1px;
+  margin-bottom: 16px;
+}
+.page-hero h1 em { color: var(--accent); font-style: normal; }
+.page-hero p {
+  color: var(--text-dim);
+  font-size: 1.1rem;
+  max-width: 640px;
+  margin: 0 auto 28px;
+}
+.hero-buttons {
+  display: flex;
+  gap: 12px;
+  justify-content: center;
+  flex-wrap: wrap;
+}
+.btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 22px;
+  border-radius: var(--radius);
+  font-size: 0.95rem;
+  font-weight: 600;
+  cursor: pointer;
+  border: none;
+  transition: background 0.15s, transform 0.1s;
+  text-decoration: none;
+}
+.btn:active { transform: scale(0.97); }
+.btn-primary { background: var(--accent); color: #fff; }
+.btn-primary:hover { background: var(--accent-hover); color: #fff; }
+.btn-secondary { background: var(--surface2); color: var(--text); border: 1px solid rgba(255,255,255,0.1); }
+.btn-secondary:hover { background: #2a2a3e; color: var(--text); }
+
+/* ── Layout ── */
+.content {
+  max-width: 860px;
+  margin: 0 auto;
+  padding: 48px 32px 64px;
+}
+.section {
+  margin-bottom: 48px;
+}
+.section h2 {
+  font-size: 1.5rem;
+  font-weight: 700;
+  margin-bottom: 8px;
+  letter-spacing: -0.3px;
+}
+.section h2 .num {
+  display: inline-block;
+  width: 28px;
+  height: 28px;
+  line-height: 28px;
+  text-align: center;
+  background: var(--accent);
+  color: #fff;
+  border-radius: 50%;
+  font-size: 0.9rem;
+  margin-right: 10px;
+  vertical-align: 2px;
+}
+.section h3 {
+  font-size: 1.05rem;
+  font-weight: 700;
+  margin: 24px 0 8px;
+  color: var(--text);
+}
+.section p {
+  color: var(--text-dim);
+  margin-bottom: 14px;
+}
+.section ul, .section ol {
+  color: var(--text-dim);
+  margin: 0 0 14px 24px;
+}
+.section li { margin-bottom: 6px; }
+.section li code { color: #a0c8ff; background: rgba(160,200,255,0.08); padding: 1px 6px; border-radius: 3px; font-size: 0.88em; }
+
+.card {
+  background: var(--surface);
+  border: 1px solid rgba(255,255,255,0.08);
+  border-radius: var(--radius);
+  padding: 28px 32px;
+  margin-bottom: 24px;
+}
+.card .lede {
+  color: var(--text);
+  font-size: 1rem;
+  margin-bottom: 16px;
+}
+.card .badge {
+  display: inline-block;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.4px;
+  text-transform: uppercase;
+  padding: 3px 9px;
+  border-radius: 999px;
+  margin-bottom: 14px;
+}
+.badge-open { background: rgba(91,239,141,0.15); color: #5bef8d; border: 1px solid rgba(91,239,141,0.3); }
+.badge-gated { background: rgba(239,180,91,0.15); color: #efb45b; border: 1px solid rgba(239,180,91,0.3); }
+
+.code-block {
+  background: #0d0d18;
+  border: 1px solid rgba(255,255,255,0.07);
+  border-radius: 8px;
+  padding: 14px 18px;
+  font-family: 'SF Mono', 'Fira Code', 'Consolas', monospace;
+  font-size: 0.82rem;
+  color: #a0c8ff;
+  overflow-x: auto;
+  white-space: pre;
+  margin: 10px 0;
+  position: relative;
+}
+.code-block .c { color: #6a7080; }
+.copy-btn {
+  position: absolute;
+  top: 8px;
+  right: 10px;
+  background: rgba(91,141,239,0.15);
+  border: 1px solid rgba(91,141,239,0.3);
+  color: var(--accent);
+  border-radius: 5px;
+  padding: 3px 10px;
+  font-size: 0.75rem;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+.copy-btn:hover { background: rgba(91,141,239,0.3); }
+
+.callout {
+  background: rgba(91,141,239,0.06);
+  border-left: 3px solid var(--accent);
+  border-radius: 6px;
+  padding: 14px 18px;
+  margin: 16px 0;
+  color: var(--text-dim);
+  font-size: 0.92rem;
+}
+.callout strong { color: var(--text); }
+
+.docs-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 14px;
+  margin-top: 16px;
+}
+.docs-grid a {
+  background: var(--surface);
+  border: 1px solid rgba(255,255,255,0.08);
+  border-radius: 8px;
+  padding: 16px 18px;
+  display: block;
+  color: var(--text);
+  font-weight: 600;
+  font-size: 0.95rem;
+  transition: border-color 0.15s, background 0.15s;
+}
+.docs-grid a:hover { border-color: var(--accent); background: var(--surface2); color: var(--text); }
+.docs-grid a span { display: block; font-weight: 400; font-size: 0.82rem; color: var(--text-dim); margin-top: 4px; }
+
+/* ── Footer ── */
+footer {
+  text-align: center;
+  padding: 32px;
+  color: var(--text-dim);
+  font-size: 0.85rem;
+  border-top: 1px solid rgba(255,255,255,0.05);
+  margin-top: 40px;
+}
+footer a { color: var(--text-dim); }
+footer a:hover { color: var(--accent); }
+</style>
+</head>
+<body>
+
+<!-- Nav -->
+<nav>
+  <a href="/" class="nav-logo">scripted<span>relief</span></a>
+  <div class="nav-links">
+    <a href="/">Themes</a>
+    <a href="/gallery.html">Gallery</a>
+    <a href="/contributors.html" class="active">Contributors</a>
+  </div>
+</nav>
+
+<!-- Hero -->
+<div class="page-hero">
+  <h1>Become a <em>contributor</em></h1>
+  <p>Scripted Relief is built by a community of mapmakers. Share the maps you generate, donate the DEM work that powers them, or improve the <code>hillgen</code> code itself.</p>
+  <div class="hero-buttons">
+    <a href="https://github.com/emuehlstein/hillshade-generator" class="btn btn-primary" target="_blank">View on GitHub</a>
+    <a href="https://github.com/emuehlstein/hillshade-generator/issues/new" class="btn btn-secondary" target="_blank">Request Access</a>
+  </div>
+</div>
+
+<div class="content">
+
+  <!-- Install -->
+  <div class="section">
+    <h2><span class="num">0</span>Install hillgen</h2>
+    <p>One command installs <code>hillgen</code> plus GDAL, the PMTiles CLI, and Python dependencies. Works on macOS and Linux.</p>
+    <div class="code-block" id="install-cmd"><button class="copy-btn" onclick="copyBlock('install-cmd')">copy</button>curl -fsSL https://raw.githubusercontent.com/emuehlstein/hillshade-generator/main/install.sh | bash</div>
+    <p>After install, verify with <code>hillgen --version</code> and browse styles with <code>hillgen themes</code>.</p>
+  </div>
+
+  <!-- Path 1: Intermediates -->
+  <div class="section">
+    <h2><span class="num">1</span>Contribute intermediates</h2>
+    <div class="card">
+      <div class="badge badge-open">Open · GitHub auth</div>
+      <p class="lede">Every <code>hillgen run</code> downloads a DEM, reprojects it, computes hillshade, and styles it. With <code>--contribute</code>, those expensive intermediate files are uploaded to a shared cache so the next person generating the same area gets instant reuse.</p>
+
+      <h3>How it works</h3>
+      <ul>
+        <li>Authenticate with your <strong>GitHub</strong> account via the <a href="https://cli.github.com/" target="_blank">gh CLI</a> — no AWS account needed.</li>
+        <li><code>hillgen</code> exchanges your GitHub token for a short-lived presigned S3 URL through a Lambda broker at <code>api.scriptedrelief.com</code>.</li>
+        <li>Your GitHub username must be on the contributor allowlist. Open a GitHub issue to request access.</li>
+        <li>Intermediates are derived from public-domain data (USGS, state LiDAR programs) — no licensing concerns.</li>
+      </ul>
+
+      <h3>Quick start</h3>
+      <div class="code-block" id="contrib-auth"><button class="copy-btn" onclick="copyBlock('contrib-auth')">copy</button><span class="c"># 1. Authenticate with GitHub (one time)</span>
+gh auth login
+hillgen auth status
+
+<span class="c"># 2. Run anything with --contribute</span>
+hillgen run --place "Crater Lake" --theme alpine-glacier --zoom 10-16 --contribute</div>
+
+      <div class="callout">
+        <strong>If the upload step fails</strong> (e.g. you aren't on the allowlist yet) the run itself still succeeds — only the upload loop bails out with a hint. Your tiles are still produced locally.
+      </div>
+    </div>
+  </div>
+
+  <!-- Path 2: Gallery -->
+  <div class="section">
+    <h2><span class="num">2</span>Publish to the gallery</h2>
+    <div class="card">
+      <div class="badge badge-gated">Curator-reviewed · contributor key</div>
+      <p class="lede">Share finished PMTiles maps on the <a href="/gallery.html">Community Gallery</a>. Each submission gets a preview image, title, caption, and credit line, and is browsable on an interactive map.</p>
+
+      <h3>Get a contributor key</h3>
+      <p>Gallery publishing currently uses a direct-upload contributor key (AWS credentials scoped to the gallery prefix). <a href="https://github.com/emuehlstein/hillshade-generator/issues/new" target="_blank">Open an issue</a> or ping <a href="https://github.com/emuehlstein" target="_blank">@emuehlstein</a> to request one.</p>
+
+      <h3>Publish a map</h3>
+      <div class="code-block" id="gallery-cmd"><button class="copy-btn" onclick="copyBlock('gallery-cmd')">copy</button><span class="c"># Set your contributor key (one-time)</span>
+export AWS_ACCESS_KEY_ID=&lt;your-key-id&gt;
+export AWS_SECRET_ACCESS_KEY=&lt;your-secret&gt;
+export AWS_DEFAULT_REGION=us-east-2
+
+<span class="c"># Generate</span>
+hillgen run --place "La Porte County, IN" --theme cool-elev \
+  --exaggeration 9 --zoom 10-16 --contribute
+
+<span class="c"># Publish to the gallery</span>
+hillgen publish --gallery \
+  --title "La Porte County" \
+  --caption "Indiana LiDAR, 9x exaggeration" \
+  --author "yourname" \
+  --preview path/to/preview.png \
+  path/to/output.pmtiles</div>
+
+      <p>Add <code>--dry-run</code> to validate the PMTiles file without uploading.</p>
+    </div>
+  </div>
+
+  <!-- Path 3: Code -->
+  <div class="section">
+    <h2><span class="num">3</span>Contribute code, themes, or DEM sources</h2>
+    <div class="card">
+      <p class="lede">Pull requests are welcome. The repo follows a standard fork-and-PR flow with tests run via <code>pytest</code>.</p>
+
+      <h3>Good first contributions</h3>
+      <ul>
+        <li><strong>Themes</strong> — add a color ramp under <code>hillgen/themes/ramps/</code> and register it in <code>hillgen/themes/registry.py</code>.</li>
+        <li><strong>State LiDAR sources</strong> — implement a new DEM source under <code>hillgen/sources/</code> following the pattern in <code>wi_dnr_lidar.py</code> or <code>igic_indiana_lidar.py</code>.</li>
+        <li><strong>Bug fixes &amp; docs</strong> — see open issues for anything labeled <em>good first issue</em>.</li>
+      </ul>
+
+      <h3>Read first</h3>
+      <div class="docs-grid">
+        <a href="https://github.com/emuehlstein/hillshade-generator/blob/main/CONTRIBUTING.md" target="_blank">CONTRIBUTING.md<span>Setup, conventions, PR checklist</span></a>
+        <a href="https://github.com/emuehlstein/hillshade-generator/blob/main/docs/ARCHITECTURE.md" target="_blank">ARCHITECTURE.md<span>How the pipeline fits together</span></a>
+        <a href="https://github.com/emuehlstein/hillshade-generator/blob/main/AGENTS.md" target="_blank">AGENTS.md<span>Guidance for AI assistants using hillgen</span></a>
+        <a href="https://github.com/emuehlstein/hillshade-generator/blob/main/ROADMAP.md" target="_blank">ROADMAP.md<span>What's shipped and what's next</span></a>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<footer>
+  <p>
+    <a href="/">Home</a> &nbsp;·&nbsp;
+    <a href="/gallery.html">Community Gallery</a> &nbsp;·&nbsp;
+    <a href="https://github.com/emuehlstein/hillshade-generator">GitHub</a>
+  </p>
+  <p style="margin-top:8px">
+    Built with <a href="https://github.com/emuehlstein/hillshade-generator">hillgen</a>.
+    Terrain data from USGS 3DEP and state LiDAR programs — public domain.
+  </p>
+</footer>
+
+<script>
+function copyBlock(id) {
+  const el = document.getElementById(id);
+  // Strip the "copy" button text and collapse leading/trailing whitespace.
+  const text = el.innerText.replace(/^copy\s*/, '').trim();
+  navigator.clipboard.writeText(text);
+  const btn = el.querySelector('.copy-btn');
+  const original = btn.textContent;
+  btn.textContent = 'copied!';
+  setTimeout(() => { btn.textContent = original; }, 1400);
+}
+</script>
+
+</body>
+</html>

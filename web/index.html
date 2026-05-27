@@ -375,6 +375,72 @@ section .subtitle {
   border-radius: 0;
   background: #0d0d0d;
 }
+
+/* CSS-only "explore" mode for shared links (browsers reject auto-requestFullscreen
+   without a user gesture, so we fake a fullscreen layout via CSS). */
+body.explore-mode { overflow: hidden; }
+body.explore-mode nav,
+body.explore-mode .hero,
+body.explore-mode #themes,
+body.explore-mode #generate,
+body.explore-mode footer,
+body.explore-mode #map-section > h2,
+body.explore-mode #map-section > p { display: none !important; }
+body.explore-mode #map-section {
+  position: fixed;
+  inset: 0;
+  padding: 0;
+  margin: 0;
+  max-width: none;
+  width: 100vw;
+  height: 100vh;
+  z-index: 9000;
+  background: #0a0a0a;
+}
+body.explore-mode #map-container {
+  width: 100vw;
+  height: 100vh;
+  border-radius: 0;
+  display: flex;
+  flex-direction: column;
+  margin: 0;
+  padding: 0;
+  background: #0a0a0a;
+}
+body.explore-mode #map {
+  flex: 1;
+  height: auto;
+  min-height: 0;
+  border-radius: 0;
+}
+body.explore-mode #map-controls {
+  padding: 10px 16px;
+  background: #111;
+  border-radius: 0;
+  margin-top: 0;
+}
+body.explore-mode #map-infobar {
+  border-radius: 0;
+  background: #0d0d0d;
+}
+#explore-exit {
+  display: none;
+  position: fixed;
+  top: 14px;
+  right: 14px;
+  z-index: 9100;
+  background: rgba(20,20,30,0.85);
+  color: var(--text);
+  border: 1px solid rgba(255,255,255,0.15);
+  border-radius: 8px;
+  padding: 8px 14px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+  backdrop-filter: blur(8px);
+}
+#explore-exit:hover { background: rgba(40,40,55,0.95); }
+body.explore-mode #explore-exit { display: inline-flex; align-items: center; gap: 6px; }
 #geo-select {
   padding: 8px 16px;
   border-radius: 6px;
@@ -486,7 +552,7 @@ footer a:hover { color: var(--accent); }
   <div class="nav-links">
     <a href="#themes">Themes</a>
     <a href="/gallery.html">Gallery</a>
-    <a href="https://github.com/emuehlstein/hillshade-generator" target="_blank">GitHub</a>
+    <a href="/contributors.html">Contributors</a>
   </div>
 </nav>
 
@@ -530,6 +596,7 @@ footer a:hover { color: var(--accent); }
 <section id="map-section">
   <h2>Explore</h2>
   <p class="subtitle">Pan, zoom, and compare themes interactively.</p>
+  <button id="explore-exit" onclick="exitExploreMode()" title="Back to homepage">✕ Close</button>
   <div id="map-container">
     <div id="map"></div>
     <div id="map-controls">
@@ -576,8 +643,9 @@ footer a:hover { color: var(--accent); }
 <footer>
   <p>
     <a href="/gallery.html">Community Gallery</a> &nbsp;·&nbsp;
+    <a href="/contributors.html">Contributors</a> &nbsp;·&nbsp;
     Built with <a href="https://github.com/emuehlstein/hillshade-generator">hillgen</a>.
-    Terrain data from USGS 3DEP, Copernicus, SRTM — public domain.
+    Terrain data from USGS 3DEP and state LiDAR programs — public domain.
     Free to use, credit appreciated.
   </p>
 </footer>
@@ -657,45 +725,70 @@ async function init() {
   buildThemeGrid();
   initMap();
 
-  // After map init, apply shared lat/lng/z/theme
-  if (params.get('lat') && params.get('lng') && params.get('z')) {
-    map.setView([parseFloat(params.get('lat')), parseFloat(params.get('lng'))], parseFloat(params.get('z')));
-  }
+  // After map init, apply shared theme first (so the layer matches what the sharer saw)
   if (params.get('theme')) {
     const sel = document.getElementById('theme-select');
     if (sel) { sel.value = params.get('theme'); loadThemeOnMap(params.get('theme'), false); }
   }
 
-  // Explore mode: hide everything except the map, go fullscreen
+  // Restore view. Prefer bounds (preserves the sharer's framing regardless of
+  // the receiver's viewport aspect ratio). Fall back to lat/lng/z for older links.
+  const b = params.get('b');
+  if (b) {
+    const [w, s, e, n] = b.split(',').map(parseFloat);
+    if ([w, s, e, n].every(v => Number.isFinite(v))) {
+      map.fitBounds([[s, w], [n, e]], { animate: false, padding: [0, 0] });
+    }
+  } else if (params.get('lat') && params.get('lng') && params.get('z')) {
+    map.setView(
+      [parseFloat(params.get('lat')), parseFloat(params.get('lng'))],
+      parseFloat(params.get('z'))
+    );
+  }
+
+  // Explore mode: hide everything except the map (CSS-only — browsers reject
+  // requestFullscreen without a user gesture, so we fake fullscreen via layout).
   if (params.get('view') === 'explore') {
     enterExploreMode();
   }
 }
 
 function enterExploreMode() {
-  // Trigger native fullscreen on the map container
+  document.body.classList.add('explore-mode');
+  // Scroll map into view (no-op when the CSS already pins it to the viewport,
+  // but harmless and helpful if explore-mode is ever toggled off via JS).
+  setTimeout(() => map && map.invalidateSize(), 50);
+  // Re-apply bounds after layout settles so the framing matches the sharer's.
+  const params = new URLSearchParams(location.search);
+  const b = params.get('b');
+  if (b) {
+    const [w, s, e, n] = b.split(',').map(parseFloat);
+    if ([w, s, e, n].every(v => Number.isFinite(v))) {
+      setTimeout(() => map && map.fitBounds([[s, w], [n, e]], { animate: false, padding: [0, 0] }), 120);
+    }
+  }
+  // Best-effort native fullscreen — only succeeds if the page was opened via a
+  // user gesture in this tab (e.g. clicking a link in the same window).
   const container = document.getElementById('map-container');
   const req = container.requestFullscreen || container.webkitRequestFullscreen || container.mozRequestFullScreen;
   if (req) {
-    req.call(container).catch(() => {});
+    try { req.call(container).catch(() => {}); } catch (e) { /* ignore */ }
   }
-  // Listen for fullscreen exit — restore the page to normal
-  const onFsChange = () => {
-    const isFs = !!(document.fullscreenElement || document.webkitFullscreenElement);
-    if (!isFs) {
-      document.removeEventListener('fullscreenchange', onFsChange);
-      document.removeEventListener('webkitfullscreenchange', onFsChange);
-      // Remove ?view=explore from URL so back/refresh shows homepage
-      const url = new URL(location.href);
-      url.searchParams.delete('view');
-      history.replaceState({}, '', url.toString());
-      // Resize map back
-      setTimeout(() => map && map.invalidateSize(), 100);
-    }
-  };
-  document.addEventListener('fullscreenchange', onFsChange);
-  document.addEventListener('webkitfullscreenchange', onFsChange);
-  setTimeout(() => map && map.invalidateSize(), 300);
+}
+
+function exitExploreMode() {
+  // Bail out of native fullscreen if active.
+  const isFs = !!(document.fullscreenElement || document.webkitFullscreenElement);
+  if (isFs) {
+    const exit = document.exitFullscreen || document.webkitExitFullscreen;
+    if (exit) { try { exit.call(document); } catch (e) { /* ignore */ } }
+  }
+  document.body.classList.remove('explore-mode');
+  // Clean ?view=explore from URL so back/refresh shows homepage.
+  const url = new URL(location.href);
+  url.searchParams.delete('view');
+  history.replaceState({}, '', url.toString());
+  setTimeout(() => map && map.invalidateSize(), 100);
 }
 
 function buildGeoGrid() {
@@ -1233,7 +1326,10 @@ function updateInfoBar() {
   const s = bounds.getSouth().toFixed(4);
   const e = bounds.getEast().toFixed(4);
   const n = bounds.getNorth().toFixed(4);
-  const shareUrl = `${location.origin}${location.pathname}?view=explore&geo=${currentGeo}&theme=${theme}&lat=${lat}&lng=${lng}&z=${z}`;
+  // Encode bounds (b=W,S,E,N) so the receiver sees the same framed region
+  // regardless of their viewport aspect ratio. lat/lng/z are kept as a
+  // fallback for older link formats.
+  const shareUrl = `${location.origin}${location.pathname}?view=explore&geo=${currentGeo}&theme=${theme}&b=${w},${s},${e},${n}&lat=${lat}&lng=${lng}&z=${z}`;
   bar.innerHTML = `
     <span title="Current zoom level">z${z}</span>
     <span title="Center coordinates">${lat}, ${lng}</span>
