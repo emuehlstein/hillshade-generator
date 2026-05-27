@@ -263,26 +263,18 @@ class WiDNRLiDAR:
         if result.returncode != 0:
             raise RuntimeError(f"gdalbuildvrt failed: {result.stderr}")
 
-        # Sanity-check the VRT covers all chunks (catches partial-list reads).
-        try:
-            import rasterio
-            with rasterio.open(out_vrt) as vrt:
-                vrt_w, vrt_h = vrt.width, vrt.height
-            # Sum of input pixel counts is a lower bound on the mosaic extent.
-            # If the VRT is dramatically smaller than the inputs, the file
-            # list was likely read incompletely.
-            with rasterio.open(paths[0]) as sample:
-                px_per_chunk = sample.width * sample.height
-            expected_min_px = px_per_chunk * len(paths) * 0.5
-            if vrt_w * vrt_h < expected_min_px:
-                raise RuntimeError(
-                    f"Mosaic VRT covers only {vrt_w}x{vrt_h}px, "
-                    f"expected at least {expected_min_px:.0f}px from "
-                    f"{len(paths)} chunks — gdalbuildvrt may have read a "
-                    f"truncated file list (see issue #5)."
-                )
-        except ImportError:
-            pass
+        # Sanity-check the VRT references every input chunk — catches the
+        # truncated-file-list failure mode (issue #5) without false-positives
+        # on bboxes that produce uneven sliver chunks (where a pixel-area
+        # heuristic doesn't work).
+        vrt_xml = out_vrt.read_text()
+        referenced = vrt_xml.count("<SourceFilename")
+        if referenced < len(paths):
+            raise RuntimeError(
+                f"Mosaic VRT references {referenced} source(s) but "
+                f"{len(paths)} chunks were submitted — gdalbuildvrt may "
+                f"have read a truncated file list (see issue #5)."
+            )
 
         return out_vrt
 
