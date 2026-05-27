@@ -57,14 +57,20 @@ hillgen run --bbox "-121.85,46.72,-121.65,46.92" \
 ## CLI Reference
 
 ```
-hillgen run       Full pipeline: fetch DEM → shade → style → tile
-hillgen fetch     Download DEM for a location or bbox
-hillgen shade     Generate hillshade from a DEM
-hillgen style     Apply a color theme to a hillshade
-hillgen tile      Package tiles (MBTiles / PMTiles)
-hillgen themes    List available themes
-hillgen sources   List available DEM sources
-hillgen version   Show version and environment info
+hillgen run        Full pipeline: fetch → reproject → shade → style → tile → package
+hillgen fetch      Download DEM for a location or bbox
+hillgen reproject  Reproject a cached DEM to EPSG:4326
+hillgen shade      Generate grayscale hillshade from a DEM
+hillgen style      Apply a color theme to a hillshade
+hillgen tile       Cut a styled raster into XYZ tiles
+hillgen package    Package tiles into MBTiles / PMTiles
+hillgen themes     List available themes
+hillgen sources    List available DEM sources
+hillgen view       Start a local Leaflet tile viewer
+hillgen publish    Upload a PMTiles file to scriptedrelief.com
+hillgen cache      Manage local cache (status / clean / pull)
+hillgen auth       Inspect contributor authentication
+hillgen version    Show version and environment info
 ```
 
 ## Dependencies
@@ -114,8 +120,8 @@ hillgen run --bbox "-105.35,39.6,-105.15,39.8" --theme midnight
 # By named place (geocodes automatically)
 hillgen run --place "Mt. St. Helens" --theme desert-sun --zoom 8-16
 
-# By county/state (US, uses Census boundaries)
-hillgen run --county cook --state IL --theme flat-terrain
+# Add a buffer around the area (degrees, ~111km per degree)
+hillgen run --place "Mt. Hood" --buffer 0.15 --theme alpine-glacier
 ```
 
 ### Browse Themes
@@ -225,8 +231,10 @@ Hillgen auto-selects the best available DEM source for your area, or you can spe
 | Source | ID | Resolution | Coverage | Auto-select |
 |--------|----|-----------|----------|-------------|
 | **NPS SfM Rainier 2021** | `nps-sfm-rainier-2021` | 0.67m | Mt. Rainier NP | ✅ |
+| **Illinois ISGS / ILHMP LiDAR** | `isgs-ilhmp` | 0.3m | Illinois (102 counties) | ✅ |
+| **Indiana IGIC LiDAR** | `igic-indiana-lidar` | 0.76m | Indiana (92 counties) | ✅ |
 | **Wisconsin DNR LiDAR** | `wi-dnr-lidar` | 1m | Wisconsin | ✅ |
-| **USGS 3DEP 1/3 arc-sec** | `usgs-3dep-10m` | ~10m | CONUS | ✅ |
+| **USGS 3DEP 1/3 arc-sec** | `usgs-3dep-10m` | ~10m | CONUS / AK / HI | ✅ (fallback) |
 | **Local file** | (path) | Any | Any | — |
 
 ### Wisconsin DNR LiDAR (`wi-dnr-lidar`)
@@ -260,7 +268,7 @@ hillgen run --dem ./my-dem.tif --theme simmon
 
 ### Adding DEM Sources
 
-DEM sources are defined as catalog entries. New sources can be added by implementing a simple downloader interface — see [docs/dem-sources.md](docs/dem-sources.md).
+DEM sources are defined as catalog entries. New sources can be added by implementing the `DEMSource` interface in [hillgen/sources/base.py](hillgen/sources/base.py) and registering them in [hillgen/sources/__init__.py](hillgen/sources/__init__.py). See the existing sources for reference implementations.
 
 ---
 
@@ -325,7 +333,7 @@ Help the community by sharing your cached intermediates back:
 hillgen run --place "Denali" --theme midnight --contribute
 ```
 
-No AWS credentials needed — uploads use short-lived presigned URLs. An automated validation pipeline checks format, bounds, and data integrity before promoting files to the public cache. See [docs/submission.md](docs/submission.md) for details.
+`--contribute` is on by default. No AWS credentials needed — authentication uses your GitHub account via the [`gh` CLI](https://cli.github.com/), and uploads use short-lived presigned URLs handed out by a small Lambda broker. Run `hillgen auth status` to verify your token, and see [CONTRIBUTING.md](CONTRIBUTING.md) for the one-time allowlist setup. Full architecture is in [docs/submission.md](docs/submission.md).
 
 ### Publish to scriptedrelief.com
 

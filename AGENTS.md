@@ -28,9 +28,9 @@ hillgen publish ./output/<file>.pmtiles
 - Different themes on the same area reuse cached hillshade sub-layers
 - The shared cache grows with every run, making hillgen faster for everyone
 
-Intermediates are derived from public domain data (USGS, Copernicus, SRTM) — there is no licensing concern.
+Intermediates are derived from public domain data (USGS, state LiDAR programs) — there is no licensing concern.
 
-**Requires AWS credentials.** If the user hasn't set `AWS_ACCESS_KEY_ID` / `AWS_SECRET_ACCESS_KEY`, `--contribute` will silently skip uploads. The run itself still succeeds.
+**Auth: GitHub, not AWS.** `--contribute` requires the [`gh` CLI](https://cli.github.com/) installed and logged in (`gh auth login`). Uploads use short-lived presigned URLs handed out by a Lambda broker; the contributor's GitHub username must be on the allowlist (open an issue to request access). Run `hillgen auth status` to verify your token. If auth fails the upload loop bails early with a clear hint — the run itself still succeeds.
 
 ## Choosing Parameters
 
@@ -95,7 +95,9 @@ Use `--dry-run` to validate without uploading.
 ## Environment
 
 - **`HILLGEN_CACHE`** — set to a path with plenty of disk space (DEMs can be 500MB+ per tile). Default: `~/.hillgen/cache`
-- **`AWS_ACCESS_KEY_ID`** / **`AWS_SECRET_ACCESS_KEY`** / **`AWS_DEFAULT_REGION=us-east-2`** — required for `--contribute` and `publish`
+- **`HILLGEN_CONTRIBUTE_ENDPOINT`** — override the broker URL used by `--contribute` (defaults to the production broker)
+- **`HILLGEN_USE_DIRECT_S3=1`** — maintainers only: bypass the broker and use direct boto3 uploads (requires AWS credentials)
+- **`AWS_ACCESS_KEY_ID`** / **`AWS_SECRET_ACCESS_KEY`** / **`AWS_DEFAULT_REGION=us-east-2`** — required for `hillgen publish` and for maintainer direct-S3 mode
 
 ## Install
 

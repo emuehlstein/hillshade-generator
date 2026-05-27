@@ -66,8 +66,8 @@ Development plan for hillgen MVP. Each milestone produces something testable aga
 - [x] `--place "Mt. St. Helens"` via Nominatim
 - [x] Auto-buffer for point features (~0.1° ≈ 11km)
 - [x] Area features use Nominatim's boundingbox directly
+- [x] `--buffer` flag for custom buffer size
 - [ ] `--county cook --state IL` via Census TIGER (deferred)
-- [ ] `--buffer` flag for custom buffer size (deferred)
 - **Test:** `--place "Mt. St. Helens"` → bbox covering crater + surrounding terrain
 
 ### M7: Auto-Exaggeration
@@ -82,8 +82,8 @@ Development plan for hillgen MVP. Each milestone produces something testable aga
 - [x] Created `scriptedrelief` bucket (us-east-2, public-read, CORS for PMTiles)
 - [x] Verified anonymous public read of cached intermediate
 - [x] Verified `try_pull` downloads 5.4MB reprojected DEM from S3
-- [ ] Wire S3 read-through into pipeline stages automatically
-- [ ] `--contribute` flag triggers uploads after each stage
+- [x] Wire S3 read-through into pipeline stages automatically
+- [x] `--contribute` flag triggers uploads after each stage
 
 ### M9: Publish
 - [x] `hillgen publish` — validates PMTiles v3 header + uploads via boto3

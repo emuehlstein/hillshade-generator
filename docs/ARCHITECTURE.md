@@ -196,30 +196,21 @@ When the user doesn't specify `--dem`, the resolver:
 3. Picks the best match
 4. Falls back to the next source if download fails
 
-### Built-in Sources (MVP)
+### Built-in Sources
 
 | Source ID | Provider | Resolution | Coverage | Priority |
 |-----------|----------|-----------|----------|----------|
-| `usgs-3dep-1m` | USGS TNM | 1m | Partial US (LiDAR) | 100 |
-| `usgs-3dep-10m` | USGS TNM | ~10m (1/3") | CONUS + HI/AK | 80 |
-| `copernicus-30m` | ESA/Copernicus | 30m | Global | 60 |
-| `srtm-30m` | NASA/USGS | 30m | 60°N–56°S | 50 |
-| `srtm-90m` | NASA/USGS | 90m | 60°N–56°S | 30 |
+| `nps-sfm-rainier-2021` | NPS SfM | 0.67m | Mt. Rainier NP | 95 |
+| `igic-indiana-lidar` | Indiana IGIC | 0.76m | Indiana (92 counties) | 92 |
+| `wi-dnr-lidar` | Wisconsin DNR | 1m | Wisconsin | 90 |
+| `isgs-ilhmp` | Illinois ISGS | 0.3m | Illinois (102 counties) | 88 |
+| `usgs-3dep-10m` | USGS TNM | ~10m (1/3") | CONUS + AK/HI | 80 |
 
-### State LiDAR Catalog (Future)
+### Adding More Sources
 
-State-level LiDAR programs (ISGS, WI DNR, etc.) will be registered as catalog entries. This is where ilhmp's county-level ISGS catalog migrates to.
-
-```python
-# Example: Illinois ISGS catalog (migrated from ilhmp)
-StateLidarSource(
-    name="isgs-ilhmp",
-    state="IL",
-    resolution_m=0.3,
-    counties=102,
-    service_url="https://clearinghouse.isgs.illinois.edu/...",
-)
-```
+Additional state LiDAR programs and global DEM providers (Copernicus, SRTM, finer USGS 3DEP tiers)
+can be added by implementing the `DEMSource` interface in `hillgen/sources/base.py` and registering
+them in `hillgen/sources/__init__.py`. See the existing implementations for reference.
 
 ---
 
@@ -363,15 +354,14 @@ hillgen run --place "Mt. Hood" --theme midnight --start-from style
 
 ### Area Specification
 
-Three ways to define the target area (exactly one required):
+Two ways to define the target area (exactly one required):
 
 | Flag | Input | Resolution |
 |------|-------|-----------|
 | `--bbox W,S,E,N` | Bounding box coordinates | Exact |
 | `--place "NAME"` | Place name → geocoded via Nominatim | Geocode + buffer |
-| `--county NAME --state XX` | US county → Census TIGER boundary | Exact polygon |
 
-`--place` uses OpenStreetMap Nominatim (free, no API key) and adds a configurable buffer around the result. For mountains/peaks, it returns a point + radius; for cities, it returns the admin boundary.
+`--place` uses OpenStreetMap Nominatim (free, no API key). Area features (cities, parks) use Nominatim's bounding box directly; point features (mountains, peaks) get an automatic buffer of ~0.1° (~11km). Override the buffer with `--buffer 0.15` for extra surrounding context.
 
 ### Output Control
 
@@ -506,60 +496,56 @@ Hillgen inherits and generalizes ilhmp's battle-tested components:
 ```
 hillshade-generator/
 ├── README.md
+├── AGENTS.md                    # quick-reference for AI assistants
+├── CONTRIBUTING.md
+├── ROADMAP.md
+├── install.sh
 ├── pyproject.toml
 ├── docs/
 │   ├── ARCHITECTURE.md          # this file
-│   ├── dem-sources.md           # adding new DEM sources
-│   └── themes.md                # theme creation guide
-├── CONTRIBUTING.md
+│   └── submission.md            # contribute + publish pipelines
 ├── web/                         # scriptedrelief.com static site
 │   ├── index.html
-│   ├── app.js
-│   ├── status.html
-│   └── assets/
-├── hillgen/             # Python package
+│   ├── gallery.html
+│   ├── catalog.json
+│   └── previews/
+├── infra/
+│   └── broker/                  # AWS SAM Lambda + API Gateway for --contribute
+├── scripts/                     # deploy / IAM / comparison utilities
+├── hillgen/                     # Python package
 │   ├── __init__.py
-│   ├── cli.py                   # Click CLI entry point (run, fetch, shade, style, tile, package)
+│   ├── cli.py                   # Click CLI: run, fetch, reproject, shade, style,
+│   │                            #            tile, package, themes, sources, view,
+│   │                            #            publish, auth, cache, version
+│   ├── cache.py                 # local filesystem cache helpers
+│   ├── cache_s3.py              # S3 read-through + push (broker or direct)
+│   ├── contribute_broker.py     # GitHub-auth client for the upload broker
+│   ├── viewer.py                # local Leaflet tile preview server
 │   ├── pipeline/
-│   │   ├── __init__.py
-│   │   ├── acquire.py           # DEM download + merge
+│   │   ├── orchestrator.py      # ensure_styled: walks all stages with cache reuse
 │   │   ├── reproject.py         # EPSG:4326 warp
-│   │   ├── hillshade.py         # gdaldem shading modes
+│   │   ├── hillshade.py         # gdaldem shading modes + composite blend
 │   │   ├── style.py             # color ramp + aspect blending
-│   │   ├── tiler.py             # gdal2tiles → tile dir
-│   │   └── packager.py          # mbtiles + pmtiles output
-│   ├── themes/
-│   │   ├── __init__.py
-│   │   ├── registry.py          # theme lookup + custom loading
+│   │   ├── tiler.py             # gdal2tiles → XYZ tile dir
+│   │   ├── packager.py          # MBTiles + PMTiles packaging
 │   │   ├── auto_exag.py         # terrain-aware exaggeration
-│   │   ├── builtin/             # built-in theme JSON files
+│   │   └── integrity.py         # raster sanity checks
+│   ├── themes/
+│   │   ├── registry.py          # Theme dataclass + built-in registrations + custom loader
 │   │   └── ramps/               # GDAL color-relief ramp .txt files
 │   ├── sources/
-│   │   ├── __init__.py
-│   │   ├── base.py              # DEMSource abstract class
-│   │   ├── usgs_3dep.py         # USGS TNM downloader
-│   │   ├── copernicus.py        # Copernicus GLO-30
-│   │   ├── srtm.py              # SRTM 30m/90m
-│   │   └── isgs.py              # IL state LiDAR (from ilhmp)
-│   ├── geo/
-│   │   ├── __init__.py
-│   │   ├── geocoder.py          # Nominatim place resolution
-│   │   ├── boundaries.py        # Census TIGER county lookup
-│   │   └── bbox.py              # bounding box utilities
-│   ├── cache/
-│   │   ├── __init__.py
-│   │   ├── local.py             # local filesystem cache
-│   │   └── s3.py                # S3 read-through cache
-│   ├── publish.py               # upload to community library
-│   ├── viewer.py                # local Leaflet preview server
-│   └── catalog.py               # catalog.json management
+│   │   ├── base.py              # DEMSource abstract class + BBox + resolve_source
+│   │   ├── usgs_3dep.py         # USGS TNM 1/3 arc-second downloader
+│   │   ├── nps_sfm_rainier.py   # NPS Mt. Rainier SfM
+│   │   ├── wi_dnr_lidar.py      # Wisconsin DNR ImageServer
+│   │   ├── igic_indiana_lidar.py# Indiana IGIC
+│   │   └── isgs_ilhmp.py        # Illinois ISGS / ILHMP (from ilhmp)
+│   └── geo/
+│       └── geocoder.py          # Nominatim place resolution
 └── tests/
-    ├── test_pipeline.py
-    ├── test_themes.py
-    ├── test_sources.py
-    ├── test_geocoder.py
-    └── fixtures/
-        └── small_dem.tif        # tiny DEM for unit tests
+    ├── test_contribute_broker.py
+    ├── test_igic_indiana_lidar.py
+    └── test_wi_dnr_lidar.py
 ```
 
 ---

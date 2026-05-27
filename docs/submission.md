@@ -11,25 +11,23 @@ There are two submission paths with different trust levels:
 | **Intermediates** (DEMs, reprojected rasters, grayscale hillshades) | Low — deterministic, verifiable | Automated | `--contribute` flag → upload → validation |
 | **PMTiles** (finished styled tiles for scriptedrelief.com) | Higher — public-facing, curated | Manual (PR) | `hillgen publish` → GitHub PR → maintainer review |
 
-## Phases
+## Current State
 
-### Alpha (current)
-
-Contributors receive AWS credentials with direct write access to both buckets. Validation runs client-side before upload. No server-side infrastructure needed.
+- **Intermediates (`--contribute`)** — production broker is live. Contributors authenticate with their GitHub token (via the `gh` CLI), request a short-lived presigned PUT from `api.scriptedrelief.com/v1/contribute`, and upload directly to S3. No AWS credentials required. The broker checks an allowlist of approved GitHub usernames; open an issue to be added. See [infra/broker/](../infra/broker/) for the SAM template and Lambda handler. Maintainers can bypass the broker with `HILLGEN_USE_DIRECT_S3=1` plus standard AWS credentials.
+- **PMTiles (`hillgen publish`)** — currently uses direct boto3 uploads with AWS credentials. The PR-based review flow described below is the planned production model; today the curator uploads on behalf of contributors who send PMTiles through other channels (or use `--gallery` for community submissions to the gallery prefix).
 
 ```bash
-# Contribute intermediates (needs AWS creds)
+# Contribute intermediates (GitHub auth via gh CLI)
 hillgen run --place "Denali" --theme midnight --contribute
 
-# Publish finished tiles (needs AWS creds)
+# Publish finished tiles (AWS creds; curator-style direct upload)
 hillgen publish ./output/denali-midnight-3x.pmtiles
+
+# Community gallery submission (separate gallery/ prefix on the same bucket)
+hillgen publish ./output/denali-midnight-3x.pmtiles --gallery --preview preview.png
 ```
 
-### Production
-
-Anonymous contributors use presigned URLs — no AWS account needed. Server-side validation promotes or rejects uploads automatically. PMTiles go through a PR-based review before appearing on scriptedrelief.com.
-
-The rest of this document describes the production architecture.
+The rest of this document describes the production architecture for both paths.
 
 ---
 
