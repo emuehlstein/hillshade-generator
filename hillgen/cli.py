@@ -865,30 +865,40 @@ def view(path, port):
 
 
 @cli.command()
-@click.argument("pmtiles", type=click.Path(exists=True))
+@click.argument("pmtiles", type=click.Path(), required=False)
 @click.option("-o", "--output", "output", type=click.Path(), default=None,
-              help="Output PNG path. Default: <pmtiles-stem>.png next to the pmtiles file.")
+              help="Output PNG path. Default: <pmtiles-stem>.png next to the pmtiles file "
+                   "(or next to --from-styled when no pmtiles is given).")
 @click.option("--width", type=int, default=1200,
               help="Output PNG width in pixels (height preserves aspect ratio).")
 @click.option("--from-styled", "from_styled", type=click.Path(exists=True), default=None,
-              help="Skip cache lookup and render from this styled GeoTIFF.")
+              help="Render directly from this styled GeoTIFF (skips cache lookup). "
+                   "PMTILES becomes optional in this mode.")
 def preview(pmtiles, output, width, from_styled):
     """Render a flat PNG preview of a generated PMTiles file.
 
     Issue #8: reads the matching styled GeoTIFF from the hillgen cache
     (``$HILLGEN_CACHE/styled/<stem>.tif``) and downscales it with
-    ``gdal_translate``. Use ``--from-styled`` to point at any GeoTIFF directly.
+    ``gdal_translate``. Use ``--from-styled`` to point at any GeoTIFF directly
+    (e.g. to backfill a thumbnail for an existing gallery entry).
     """
     import shutil
     import subprocess
 
-    p = Path(pmtiles)
-    if p.suffix != ".pmtiles":
+    if not pmtiles and not from_styled:
+        raise click.UsageError("Provide PMTILES, --from-styled, or both.")
+
+    p = Path(pmtiles) if pmtiles else None
+    if p is not None and p.suffix != ".pmtiles":
         raise click.BadParameter("expected a .pmtiles file", param_hint="PMTILES")
 
     if from_styled:
         styled = Path(from_styled)
     else:
+        # p is guaranteed not None here; cache lookup mode requires it to exist
+        # so we can resolve the stem and find a matching styled tif.
+        if not p.exists():
+            raise click.BadParameter(f"path does not exist: {p}", param_hint="PMTILES")
         from .cache import get_cache_dir
         styled = get_cache_dir() / "styled" / f"{p.stem}.tif"
 
@@ -902,7 +912,12 @@ def preview(pmtiles, output, width, from_styled):
         click.echo("Error: gdal_translate not found on PATH. Install GDAL.")
         raise SystemExit(1)
 
-    out = Path(output) if output else p.with_suffix(".png")
+    if output:
+        out = Path(output)
+    elif p is not None:
+        out = p.with_suffix(".png")
+    else:
+        out = styled.with_suffix(".png")
     out.parent.mkdir(parents=True, exist_ok=True)
 
     cmd = [
