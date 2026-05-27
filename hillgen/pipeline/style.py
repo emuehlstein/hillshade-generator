@@ -119,14 +119,24 @@ def _apply_elevation_style(
         progress_cb("  Modulating by hillshade (chunked)...")
 
     # Step 2: multiply RGB by hillshade for 3D effect — chunked to avoid OOM
-    CHUNK_ROWS = 512
+    CHUNK_ROWS = 1024
 
     with rasterio.open(elev_colored) as elev_src:
         profile = elev_src.profile.copy()
-        profile.update(tiled=True, blockxsize=512, blockysize=512, bigtiff="YES")
+        profile.update(tiled=True, blockxsize=512, blockysize=512, bigtiff="IF_SAFER")
         height, width = elev_src.height, elev_src.width
 
         with rasterio.open(hillshade_path) as hs_src:
+            # Sanity-check grid alignment: same shape + transform required for
+            # pixel-window reads to line up across both inputs.
+            if (hs_src.shape != elev_src.shape
+                    or hs_src.transform != elev_src.transform):
+                raise RuntimeError(
+                    f"Elevation style: hillshade {hs_src.shape}/"
+                    f"{hs_src.transform} does not match colored DEM "
+                    f"{elev_src.shape}/{elev_src.transform}. Both inputs must "
+                    "be on the same grid."
+                )
             with rasterio.open(output_path, "w", **profile) as dst:
                 for row_off in range(0, height, CHUNK_ROWS):
                     chunk_h = min(CHUNK_ROWS, height - row_off)

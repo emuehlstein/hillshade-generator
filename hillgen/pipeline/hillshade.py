@@ -148,17 +148,44 @@ def generate_composite(
 
         layer_paths.append((sub_path, weight))
 
-    # Blend using chunked windowed reads to avoid loading full arrays into RAM
+    # Blend using chunked windowed reads to avoid loading full arrays into RAM.
+    # Implementation notes:
+    #  - BIGTIFF=IF_SAFER prevents silent 4GB-overflow failures on large LZW
+    #    outputs (issue #7).
+    #  - Sub-layer datasets are opened once outside the loop so each chunk
+    #    reads from the same handle — re-opening per chunk has been observed
+    #    to interact badly with rasterio's block cache on large rasters
+    #    (issue #6).
+    #  - CHUNK_ROWS is a multiple of the output blockysize so each windowed
+    #    write aligns with whole output tiles (no partial-block rewrites).
     if progress_cb:
         progress_cb("Blending sub-layers (chunked)...")
 
-    CHUNK_ROWS = 512  # process 512 rows at a time (~200 MB peak for 80k-wide raster)
+    BLOCK = 512
+    CHUNK_ROWS = BLOCK * 2  # 1024 rows per chunk (~600 MB peak for 80k-wide raster)
 
-    with rasterio.open(layer_paths[0][0]) as src:
+    layer_srcs = [rasterio.open(p) for p, _ in layer_paths]
+    try:
+        src = layer_srcs[0]
         profile = src.profile.copy()
-        profile.update(dtype="uint8", compress="lzw", tiled=True,
-                       blockxsize=512, blockysize=512)
+        profile.update(
+            dtype="uint8",
+            compress="lzw",
+            tiled=True,
+            blockxsize=BLOCK,
+            blockysize=BLOCK,
+            BIGTIFF="IF_SAFER",
+        )
         height, width = src.shape
+
+        # Validate sub-layers all have the same grid — otherwise windowed reads
+        # would silently return misaligned data.
+        for ls, (lp, _) in zip(layer_srcs, layer_paths):
+            if ls.shape != src.shape or ls.transform != src.transform:
+                raise RuntimeError(
+                    f"Composite sub-layer {lp.name} has shape={ls.shape}/"
+                    f"transform={ls.transform}, expected {src.shape}/{src.transform}"
+                )
 
         with rasterio.open(output_path, "w", **profile) as dst:
             for row_off in range(0, height, CHUNK_ROWS):
@@ -166,15 +193,22 @@ def generate_composite(
                 window = rasterio.windows.Window(0, row_off, width, chunk_h)
                 blended = np.zeros((chunk_h, width), dtype=np.float64)
 
-                for path, weight in layer_paths:
-                    with rasterio.open(path) as layer_src:
-                        data = layer_src.read(1, window=window).astype(np.float64)
-                        blended += data * weight
+                for layer_src, (_, weight) in zip(layer_srcs, layer_paths):
+                    data = layer_src.read(1, window=window).astype(np.float64)
+                    blended += data * weight
 
                 chunk_out = np.clip(blended, 0, 255).astype(np.uint8)
                 dst.write(chunk_out, 1, window=window)
 
-        del blended  # explicit cleanup
+            del blended  # explicit cleanup
+    finally:
+        for ls in layer_srcs:
+            ls.close()
+
+    # Post-write integrity check: catches the issue #6 "repeated tile pattern"
+    # corruption and any all-nodata output. No-op for small rasters.
+    from .integrity import validate_raster
+    validate_raster(output_path, check_data=True, check_block_variance=True)
 
     if progress_cb:
         size_mb = output_path.stat().st_size / (1024 * 1024)
