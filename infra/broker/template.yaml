@@ -1,0 +1,155 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: hillgen contribute broker — issues presigned S3 PUT URLs to allowlisted GitHub users.
+
+Parameters:
+  BucketName:
+    Type: String
+    Default: scriptedrelief-data
+    Description: S3 bucket that receives contributed intermediates.
+  GalleryBucketName:
+    Type: String
+    Default: scriptedrelief
+    Description: S3 bucket that hosts gallery PMTiles + catalog (public web bucket).
+  GalleryCatalogKey:
+    Type: String
+    Default: gallery/catalog.json
+    Description: S3 key for the gallery catalog JSON (read-modify-write on submit).
+  AllowlistKey:
+    Type: String
+    Default: config/allowlist.json
+    Description: S3 key for the contributor allowlist JSON.
+  MaxBytes:
+    Type: Number
+    Default: 2147483648
+    Description: Global default per-file upload cap (bytes). Per-contributor caps override this.
+  PresignTtlSeconds:
+    Type: Number
+    Default: 900
+    Description: Lifetime of issued presigned PUT URLs.
+  DomainName:
+    Type: String
+    Default: ''
+    Description: Optional custom domain (e.g. api.scriptedrelief.com). Leave blank to skip.
+  CertificateArn:
+    Type: String
+    Default: ''
+    Description: ACM certificate ARN in this region for DomainName. Required if DomainName is set.
+  HostedZoneId:
+    Type: String
+    Default: ''
+    Description: Route53 hosted zone ID for the parent domain. Required if DomainName is set.
+
+Conditions:
+  HasCustomDomain: !Not [!Equals [!Ref DomainName, '']]
+
+Globals:
+  Function:
+    Runtime: python3.12
+    MemorySize: 256
+    Timeout: 10
+    Architectures: [arm64]
+
+Resources:
+  BrokerFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: hillgen-contribute-broker
+      CodeUri: .
+      Handler: handler.lambda_handler
+      Environment:
+        Variables:
+          BUCKET: !Ref BucketName
+          BUCKET_GALLERY: !Ref GalleryBucketName
+          GALLERY_CATALOG_KEY: !Ref GalleryCatalogKey
+          ALLOWLIST_KEY: !Ref AllowlistKey
+          MAX_BYTES: !Ref MaxBytes
+          PRESIGN_TTL_SECONDS: !Ref PresignTtlSeconds
+      Policies:
+        - Statement:
+            # Read the allowlist
+            - Effect: Allow
+              Action: s3:GetObject
+              Resource: !Sub arn:aws:s3:::${BucketName}/${AllowlistKey}
+            # Presign PUTs only into the cache/{stage}/* prefixes we allow.
+            # Note: presign signs the principal's permissions, so this is the
+            # actual upload boundary — even a leaked URL can only PUT here.
+            - Effect: Allow
+              Action: s3:PutObject
+              Resource:
+                - !Sub arn:aws:s3:::${BucketName}/cache/reprojected/*
+                - !Sub arn:aws:s3:::${BucketName}/cache/hillshade/*
+                - !Sub arn:aws:s3:::${BucketName}/cache/styled/*
+            # Issue #11: gallery uploads + catalog read-modify-write target the
+            # public web bucket. PMTiles and previews land under gallery/; the
+            # catalog itself is owned by the Lambda so the CLI never needs AWS
+            # credentials.
+            - Effect: Allow
+              Action: s3:PutObject
+              Resource:
+                - !Sub arn:aws:s3:::${GalleryBucketName}/gallery/*
+            - Effect: Allow
+              Action:
+                - s3:GetObject
+                - s3:PutObject
+              Resource:
+                - !Sub arn:aws:s3:::${GalleryBucketName}/${GalleryCatalogKey}
+      Events:
+        Contribute:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref BrokerApi
+            Method: POST
+            Path: /v1/contribute
+
+  BrokerApi:
+    Type: AWS::Serverless::HttpApi
+    Properties:
+      StageName: $default
+      CorsConfiguration:
+        AllowOrigins: ['*']
+        AllowMethods: [POST, OPTIONS]
+        AllowHeaders: [authorization, content-type]
+        MaxAge: 300
+
+  BrokerDomain:
+    Type: AWS::ApiGatewayV2::DomainName
+    Condition: HasCustomDomain
+    Properties:
+      DomainName: !Ref DomainName
+      DomainNameConfigurations:
+        - CertificateArn: !Ref CertificateArn
+          EndpointType: REGIONAL
+          SecurityPolicy: TLS_1_2
+
+  BrokerApiMapping:
+    Type: AWS::ApiGatewayV2::ApiMapping
+    Condition: HasCustomDomain
+    Properties:
+      DomainName: !Ref BrokerDomain
+      ApiId: !Ref BrokerApi
+      Stage: $default
+
+  BrokerDomainAlias:
+    Type: AWS::Route53::RecordSet
+    Condition: HasCustomDomain
+    Properties:
+      HostedZoneId: !Ref HostedZoneId
+      Name: !Ref DomainName
+      Type: A
+      AliasTarget:
+        DNSName: !GetAtt BrokerDomain.RegionalDomainName
+        HostedZoneId: !GetAtt BrokerDomain.RegionalHostedZoneId
+        EvaluateTargetHealth: false
+
+Outputs:
+  BrokerEndpoint:
+    Description: Base URL of the contribute broker (POST /v1/contribute).
+    Value: !Sub https://${BrokerApi}.execute-api.${AWS::Region}.amazonaws.com
+  BrokerCustomEndpoint:
+    Condition: HasCustomDomain
+    Description: Custom-domain URL for the broker.
+    Value: !Sub https://${DomainName}/v1/contribute
+  BrokerFunctionArn:
+    Description: Lambda function ARN.
+    Value: !GetAtt BrokerFunction.Arn

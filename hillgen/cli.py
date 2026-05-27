@@ -10,6 +10,7 @@ Usage:
 """
 
 import math
+import os
 import shutil
 import subprocess
 import sys
@@ -264,104 +265,26 @@ def _get_gdal_version():
 def _ensure_styled(resolved_bbox, dem, theme_name, exaggeration):
     """Run fetch → reproject → shade → style, returning the styled raster path.
 
-    Reuses cache at every stage.
+    Thin Click-layer wrapper around :func:`hillgen.pipeline.orchestrator.ensure_styled`
+    that translates errors into ``click.BadParameter`` and routes progress
+    through ``click.echo``.
     """
-    from .themes import get_theme
-    from .sources import resolve_source
-    from .cache import ensure_cache_dir
-    from .pipeline.reproject import reproject_to_4326, needs_reproject
-    from .pipeline.hillshade import generate_grayscale, generate_composite, ShadingMode
-    from .pipeline.style import apply_style
+    from .pipeline.orchestrator import ensure_styled
 
-    theme = get_theme(theme_name)
-    if theme is None:
-        raise click.BadParameter(f"Unknown theme: {theme_name}", param_hint="--theme")
-
-    cb = lambda msg: click.echo(msg)
-    source = resolve_source(resolved_bbox, dem)
-
-    # S3 push helper — pushes a completed stage file to the private intermediates
-    # bucket if HILLGEN_S3_INTERMEDIATES env var is set (e.g. s3://bucket/prefix/).
-    # Silently skips if boto3 unavailable or var not set.
-    import os as _os
-    _s3_intermediates = _os.environ.get("HILLGEN_S3_INTERMEDIATES", "").rstrip("/")
-
-    def _push_intermediate(path: Path, stage: str):
-        if not _s3_intermediates or not path.exists():
-            return
-        try:
-            import boto3
-            bucket, _, prefix = _s3_intermediates.replace("s3://", "").partition("/")
-            key = f"{prefix}/{stage}/{path.name}" if prefix else f"{stage}/{path.name}"
-            cb(f"  → S3 {_s3_intermediates}/{stage}/{path.name}")
-            boto3.client("s3").upload_file(str(path), bucket, key)
-        except Exception as e:
-            cb(f"  ⚠ S3 push skipped: {e}")
-
-    # DEM
-    dem_dir = ensure_cache_dir("dem") / source.name
-    dem_path = source.download(resolved_bbox, dem_dir, progress_cb=cb)
-    _push_intermediate(dem_path, f"dem/{source.name}")
-
-    # Resolve exaggeration (auto if needed)
-    if exaggeration and str(exaggeration) != "auto":
-        exag = float(exaggeration)
-    elif theme.get_exaggeration_value():
-        exag = theme.get_exaggeration_value()
-    else:
-        from .pipeline.auto_exag import compute_auto_exaggeration
-        exag = compute_auto_exaggeration(dem_path)
-        click.echo(f"Auto-exaggeration: {exag}x")
-
-    # Reproject
-    if needs_reproject(dem_path):
-        reproj_dir = ensure_cache_dir("reprojected")
-        reproj_path = reproj_dir / f"{dem_path.stem}_4326.tif"
-        if not reproj_path.exists():
-            reproject_to_4326(dem_path, reproj_path, progress_cb=cb)
-            _push_intermediate(reproj_path, "reprojected")
-        else:
-            click.echo(f"Reproject cached: {reproj_path.name}")
-        input_dem = reproj_path
-    else:
-        input_dem = dem_path
-
-    # Hillshade
-    hs_dir = ensure_cache_dir("hillshade")
-    if theme.shading == "composite":
-        weights = theme.composite_weights
-        w_str = "-".join(str(w) for w in weights)
-        hs_path = hs_dir / f"{input_dem.stem}_gray_composite_{w_str}_{exag}x.tif"
-        if not hs_path.exists():
-            generate_composite(input_dem, hs_path, exag, weights=weights, cache_dir=hs_dir, progress_cb=cb)
-            _push_intermediate(hs_path, "hillshade")
-            # Also push sub-layer grayscales (multi/igor/combined)
-            for sub in hs_dir.glob(f"{input_dem.stem}_gray_*_{exag}x.tif"):
-                if sub != hs_path:
-                    _push_intermediate(sub, "hillshade")
-        else:
-            click.echo(f"Hillshade cached: {hs_path.name}")
-    else:
-        mode_str = "multi" if theme.shading == "multidirectional" else theme.shading
-        mode = ShadingMode(mode_str)
-        hs_path = hs_dir / f"{input_dem.stem}_gray_{mode.value}_{exag}x.tif"
-        if not hs_path.exists():
-            generate_grayscale(input_dem, hs_path, exag, mode=mode, progress_cb=cb)
-            _push_intermediate(hs_path, "hillshade")
-        else:
-            click.echo(f"Hillshade cached: {hs_path.name}")
-
-    # Style
-    styled_dir = ensure_cache_dir("styled")
-    styled_path = styled_dir / f"{input_dem.stem}_{theme.name}_{exag}x.tif"
-    if not styled_path.exists():
-        elev_dem = input_dem if theme.color_mode == "elevation" else None
-        apply_style(hs_path, styled_path, theme, dem_path=elev_dem, progress_cb=cb)
-        _push_intermediate(styled_path, "styled")
-    else:
-        click.echo(f"Styled cached: {styled_path.name}")
-
-    return styled_path
+    try:
+        return ensure_styled(
+            resolved_bbox,
+            dem,
+            theme_name,
+            exaggeration,
+            allow_s3_pull=True,
+            progress_cb=lambda msg: click.echo(msg),
+        )
+    except ValueError as e:
+        # Most commonly: unknown theme name.
+        if "theme" in str(e).lower():
+            raise click.BadParameter(str(e), param_hint="--theme")
+        raise
 
 
 def _resolve_bbox(bbox_str, place, buffer_deg=None):
@@ -393,9 +316,41 @@ def _resolve_bbox(bbox_str, place, buffer_deg=None):
     try:
         bbox = geocode(place, buffer_deg=buf)
         click.echo(f"Geocoded '{place}' → {bbox}")
+        _warn_large_place_bbox(place, bbox)
         return bbox
     except ValueError as e:
         raise click.BadParameter(str(e), param_hint="--place")
+
+
+# Threshold above which we hint that a geocoded place is suspiciously large.
+# 0.5 sq° ≈ 6,000 km² — bigger than most counties; "Death Valley NP", "Yellowstone",
+# "Olympic Peninsula" all blow past this. Issue #12.
+_LARGE_PLACE_SQ_DEG = 0.5
+
+
+def _warn_large_place_bbox(place: str, bbox) -> None:
+    """Hint that a place name resolved to a very large bounding box.
+
+    Helps first-time users (and agents) catch cases like ``--place "Death Valley"``
+    which expands to the entire NP (~3 sq°) before the tile-count estimate makes
+    that obvious. We only inform — the run estimate + sanity check still gate
+    the actual work.
+    """
+    w = abs(bbox.east - bbox.west)
+    h = abs(bbox.north - bbox.south)
+    area = w * h
+    if area < _LARGE_PLACE_SQ_DEG:
+        return
+    click.secho(
+        f"ℹ️  '{place}' resolved to a large bbox "
+        f"({w:.2f}° × {h:.2f}° = {area:.2f} sq°).",
+        fg="cyan",
+    )
+    click.secho(
+        "   For a sub-region, try --bbox west,south,east,north "
+        "or --place \"<more specific feature>\".",
+        fg="cyan",
+    )
 
 @cli.command()
 @click.option("--bbox", type=str, help="Bounding box: west,south,east,north")
@@ -457,10 +412,11 @@ def reproject(bbox, place, dem):
         return
 
     # Reproject
+    from .pipeline.orchestrator import cache_lookup
     reproj_dir = ensure_cache_dir("reprojected")
     output = reproj_dir / f"{dem_path.stem}_4326.tif"
 
-    if output.exists():
+    if cache_lookup("reprojected", output, progress_cb=lambda msg: click.echo(msg)):
         click.echo(f"Cached: {output}")
         return
 
@@ -491,13 +447,14 @@ def shade(bbox, place, dem, exaggeration, shading):
     dem_path = source.download(resolved_bbox, dem_dir, progress_cb=cb)
 
     # Step 2: ensure reprojected to 4326
+    from .pipeline.orchestrator import cache_lookup
     if needs_reproject(dem_path):
         reproj_dir = ensure_cache_dir("reprojected")
         reproj_path = reproj_dir / f"{dem_path.stem}_4326.tif"
-        if not reproj_path.exists():
-            reproject_to_4326(dem_path, reproj_path, progress_cb=cb)
-        else:
+        if cache_lookup("reprojected", reproj_path, progress_cb=cb):
             click.echo(f"Reproject cached: {reproj_path.name}")
+        else:
+            reproject_to_4326(dem_path, reproj_path, progress_cb=cb)
         input_dem = reproj_path
     else:
         input_dem = dem_path
@@ -513,7 +470,7 @@ def shade(bbox, place, dem, exaggeration, shading):
 
     if shading == "composite":
         output = hs_dir / f"{input_dem.stem}_gray_composite_0.6-0.3-0.1_{exaggeration}x.tif"
-        if output.exists():
+        if cache_lookup("hillshade", output, progress_cb=cb):
             click.echo(f"Cached: {output}")
             return
         generate_composite(
@@ -525,7 +482,7 @@ def shade(bbox, place, dem, exaggeration, shading):
     else:
         mode = ShadingMode(shading if shading != "multidirectional" else "multi")
         output = hs_dir / f"{input_dem.stem}_gray_{mode.value}_{exaggeration}x.tif"
-        if output.exists():
+        if cache_lookup("hillshade", output, progress_cb=cb):
             click.echo(f"Cached: {output}")
             return
         generate_grayscale(
@@ -545,74 +502,7 @@ def shade(bbox, place, dem, exaggeration, shading):
 def style(bbox, place, dem, theme_name, exaggeration):
     """Apply a theme to a cached hillshade."""
     resolved_bbox = _resolve_bbox(bbox, place)
-
-    from .themes import get_theme
-    from .sources import resolve_source
-    from .cache import ensure_cache_dir
-    from .pipeline.reproject import reproject_to_4326, needs_reproject
-    from .pipeline.hillshade import generate_grayscale, generate_composite, ShadingMode
-    from .pipeline.style import apply_style
-
-    theme = get_theme(theme_name)
-    if theme is None:
-        raise click.BadParameter(f"Unknown theme: {theme_name}", param_hint="--theme")
-
-    # Resolve exaggeration
-    exag = exaggeration or theme.get_exaggeration_value() or 3.0
-    cb = lambda msg: click.echo(msg)
-
-    source = resolve_source(resolved_bbox, dem)
-
-    # Ensure DEM
-    dem_dir = ensure_cache_dir("dem") / source.name
-    dem_path = source.download(resolved_bbox, dem_dir, progress_cb=cb)
-
-    # Ensure reproject
-    if needs_reproject(dem_path):
-        reproj_dir = ensure_cache_dir("reprojected")
-        reproj_path = reproj_dir / f"{dem_path.stem}_4326.tif"
-        if not reproj_path.exists():
-            reproject_to_4326(dem_path, reproj_path, progress_cb=cb)
-        else:
-            click.echo(f"Reproject cached: {reproj_path.name}")
-        input_dem = reproj_path
-    else:
-        input_dem = dem_path
-
-    # Ensure hillshade
-    hs_dir = ensure_cache_dir("hillshade")
-    if theme.shading == "composite":
-        weights = theme.composite_weights
-        w_str = "-".join(str(w) for w in weights)
-        hs_path = hs_dir / f"{input_dem.stem}_gray_composite_{w_str}_{exag}x.tif"
-        if not hs_path.exists():
-            generate_composite(
-                input_dem, hs_path, exag, weights=weights,
-                cache_dir=hs_dir, progress_cb=cb,
-            )
-        else:
-            click.echo(f"Hillshade cached: {hs_path.name}")
-    else:
-        mode_str = "multi" if theme.shading == "multidirectional" else theme.shading
-        mode = ShadingMode(mode_str)
-        hs_path = hs_dir / f"{input_dem.stem}_gray_{mode.value}_{exag}x.tif"
-        if not hs_path.exists():
-            generate_grayscale(input_dem, hs_path, exag, mode=mode, progress_cb=cb)
-        else:
-            click.echo(f"Hillshade cached: {hs_path.name}")
-
-    # Apply style
-    styled_dir = ensure_cache_dir("styled")
-    styled_path = styled_dir / f"{input_dem.stem}_{theme.name}_{exag}x.tif"
-
-    if styled_path.exists():
-        click.echo(f"Cached: {styled_path}")
-        return
-
-    # For elevation mode, pass the reprojected DEM
-    elev_dem = input_dem if theme.color_mode == "elevation" else None
-
-    apply_style(hs_path, styled_path, theme, dem_path=elev_dem, progress_cb=cb)
+    styled_path = _ensure_styled(resolved_bbox, dem, theme_name, exaggeration)
     click.echo(f"\nStyled output: {styled_path}")
 
 
@@ -765,7 +655,6 @@ def run(bbox, place, theme, exaggeration, dem, zoom, output_format, output,
         _exag_val = float(exaggeration) if exaggeration else (
             _theme_obj.get_exaggeration_value() if _theme_obj else 3.0
         )
-        from .pipeline.reprojector import output_filename as _rfn
         from .cache import get_cache_dir as _gcd
         _styled_dir = _gcd() / "styled"
         _styled_cached = any(_styled_dir.glob("*.tif")) if _styled_dir.exists() else False
@@ -862,21 +751,48 @@ def run(bbox, place, theme, exaggeration, dem, zoom, output_format, output,
         cache_dir = get_cache_dir()
         click.echo("\nContributing intermediates to shared cache...")
         contributed = 0
+        skipped_reason: Optional[str] = None
+        # On the first fatal auth/allowlist failure we stop trying — every
+        # subsequent upload would fail identically and the noise drowns the
+        # real run output (issue #1). Includes both direct-S3 codes and
+        # broker error codes.
+        _fatal_codes = (
+            # Direct-S3 path
+            "AccessDenied", "NoCredentialsError",
+            "ExpiredToken", "InvalidAccessKeyId",
+            # Broker path
+            "AuthError", "missing_token", "invalid_token",
+            "not_allowlisted",
+        )
         for stage in ["reprojected", "hillshade", "styled"]:
+            if skipped_reason:
+                break
             stage_dir = cache_dir / stage
             if not stage_dir.exists():
                 continue
             for f in stage_dir.rglob("*.tif"):
-                if not s3_exists(stage, f.name):
-                    click.echo(f"  Uploading {stage}/{f.name}...")
-                    if s3_push(f, stage, f.name):
-                        contributed += 1
-                        click.echo(f"    ✓ uploaded")
-                    else:
-                        click.echo(f"    ✗ failed (check AWS credentials)")
-                else:
+                if skipped_reason:
+                    break
+                if s3_exists(stage, f.name):
                     click.echo(f"  {stage}/{f.name}: already in cache")
-        if contributed:
+                    continue
+                click.echo(f"  Uploading {stage}/{f.name}...")
+                ok, reason = s3_push(f, stage, f.name)
+                if ok:
+                    contributed += 1
+                    click.echo("    ✓ uploaded")
+                else:
+                    click.echo(f"    ✗ failed: {reason}")
+                    if reason and any(c in reason for c in _fatal_codes):
+                        skipped_reason = reason
+        if skipped_reason:
+            click.echo(
+                f"\n⚠️  --contribute disabled for the rest of this run: "
+                f"{skipped_reason}\n"
+                f"   Run `hillgen auth status` for diagnostics, or rerun "
+                f"with --no-contribute."
+            )
+        elif contributed:
             click.echo(f"Contributed {contributed} file(s) to s3://scriptedrelief-data/cache/")
         else:
             click.echo("All intermediates already in shared cache.")
@@ -949,7 +865,300 @@ def view(path, port):
 
 
 @cli.command()
-@click.argument("path", type=click.Path(exists=True))
+@click.argument("pmtiles", type=click.Path(exists=True))
+@click.option("-o", "--output", "output", type=click.Path(), default=None,
+              help="Output PNG path. Default: <pmtiles-stem>.png next to the pmtiles file.")
+@click.option("--width", type=int, default=1200,
+              help="Output PNG width in pixels (height preserves aspect ratio).")
+@click.option("--from-styled", "from_styled", type=click.Path(exists=True), default=None,
+              help="Skip cache lookup and render from this styled GeoTIFF.")
+def preview(pmtiles, output, width, from_styled):
+    """Render a flat PNG preview of a generated PMTiles file.
+
+    Issue #8: reads the matching styled GeoTIFF from the hillgen cache
+    (``$HILLGEN_CACHE/styled/<stem>.tif``) and downscales it with
+    ``gdal_translate``. Use ``--from-styled`` to point at any GeoTIFF directly.
+    """
+    import shutil
+    import subprocess
+
+    p = Path(pmtiles)
+    if p.suffix != ".pmtiles":
+        raise click.BadParameter("expected a .pmtiles file", param_hint="PMTILES")
+
+    if from_styled:
+        styled = Path(from_styled)
+    else:
+        from .cache import get_cache_dir
+        styled = get_cache_dir() / "styled" / f"{p.stem}.tif"
+
+    if not styled.exists():
+        click.echo(f"Error: styled raster not found: {styled}")
+        click.echo("Hint: re-run `hillgen run ...` (intermediates land in the cache),")
+        click.echo("      or pass --from-styled <path-to-styled.tif>.")
+        raise SystemExit(1)
+
+    if not shutil.which("gdal_translate"):
+        click.echo("Error: gdal_translate not found on PATH. Install GDAL.")
+        raise SystemExit(1)
+
+    out = Path(output) if output else p.with_suffix(".png")
+    out.parent.mkdir(parents=True, exist_ok=True)
+
+    cmd = [
+        "gdal_translate",
+        "-of", "PNG",
+        "-outsize", str(width), "0",
+        "-co", "ZLEVEL=9",
+        "-q",
+        str(styled),
+        str(out),
+    ]
+    click.echo(f"Rendering {styled.name} → {out.name} ({width}px wide)...")
+    result = subprocess.run(cmd, capture_output=True, text=True)
+    if result.returncode != 0:
+        click.echo(f"gdal_translate failed:\n{result.stderr}")
+        raise SystemExit(1)
+
+    size_kb = out.stat().st_size / 1024
+    click.echo(f"✓ {out} ({size_kb:.0f} KB)")
+
+
+def _publish_gallery_via_broker(
+    p: Path,
+    *,
+    preview,
+    size_mb: float,
+    title,
+    caption,
+    author,
+):
+    """Issue #11: upload a PMTiles + optional preview through the broker.
+
+    Mirrors the boto3 path in ``publish()`` but uses GitHub-token auth instead
+    of AWS credentials. Steps:
+
+      1. Upload the .pmtiles via ``upload_via_broker`` (stage ``gallery-pmtiles``)
+      2. Optionally upload preview image (stage ``gallery-preview``)
+      3. Call ``submit_gallery_entry`` so the broker appends to catalog.json
+    """
+    from . import contribute_broker as cb
+
+    try:
+        token = cb.get_github_token()
+    except cb.AuthError as e:
+        click.echo(f"Auth error: {e}")
+        click.echo("Set HILLGEN_USE_DIRECT_S3=1 to fall back to direct AWS uploads.")
+        raise SystemExit(1)
+
+    click.echo(f"Uploading {p.name} via broker...")
+    ok, reason = cb.upload_via_broker(p, "gallery-pmtiles", token=token,
+                                      progress_cb=lambda m: click.echo(m))
+    if not ok:
+        click.echo(f"Upload failed: {reason}")
+        raise SystemExit(1)
+    pmtiles_url = f"https://scriptedrelief.com/gallery/{p.name}"
+    click.echo(f"✓ PMTiles: {pmtiles_url}")
+
+    preview_url = None
+    if preview:
+        prev_path = Path(preview)
+        # Match the existing naming convention so previews don't collide.
+        broker_name = f"preview-{p.stem}{prev_path.suffix}"
+        # The broker writes the file at gallery/<filename>; copy locally to a
+        # uniquely-named temp so the broker sees the right basename.
+        import shutil as _sh
+        import tempfile
+        with tempfile.TemporaryDirectory() as td:
+            staged = Path(td) / broker_name
+            _sh.copyfile(prev_path, staged)
+            click.echo(f"Uploading preview {staged.name} via broker...")
+            ok, reason = cb.upload_via_broker(staged, "gallery-preview", token=token,
+                                              progress_cb=lambda m: click.echo(m))
+        if not ok:
+            click.echo(f"Preview upload failed: {reason}")
+            raise SystemExit(1)
+        preview_url = f"https://scriptedrelief.com/gallery/{broker_name}"
+        click.echo(f"✓ Preview: {preview_url}")
+
+    # Append catalog entry server-side.
+    try:
+        resp = cb.submit_gallery_entry(
+            pmtiles_url=pmtiles_url,
+            title=title or p.stem,
+            caption=caption or "",
+            author=author,
+            preview_url=preview_url,
+            size_mb=size_mb,
+            token=token,
+        )
+    except cb.BrokerError as e:
+        click.echo(f"Catalog update failed: {e.code}: {e.message}")
+        raise SystemExit(1)
+
+    if resp.get("status") == "duplicate":
+        click.echo(f"Already in gallery: {pmtiles_url}")
+    else:
+        click.echo(f"✓ Catalog: https://scriptedrelief.com/gallery/catalog.json")
+        click.echo(f"Submission registered. {resp.get('count', '?')} total in gallery.")
+
+
+def _publish_url_only(
+    *,
+    pmtiles_url: str,
+    preview_url,
+    size_mb,
+    title,
+    caption,
+    author,
+    dry_run: bool,
+):
+    """Register a gallery submission pointing at an already-hosted PMTiles URL.
+
+    Issue #10: when the PMTiles file already lives in our S3 bucket (e.g.
+    promoted from a curated library entry under ``tiles/``), append a gallery
+    catalog entry instead of re-uploading hundreds of MB. By default this
+    goes through the broker (GitHub-token auth, issue #11); maintainers can
+    set ``HILLGEN_USE_DIRECT_S3=1`` to use AWS credentials directly.
+    """
+    import datetime
+    import json
+    import re
+    from urllib.parse import urlparse
+
+    import requests as _requests
+
+    parsed = urlparse(pmtiles_url)
+    if parsed.scheme not in ("http", "https"):
+        raise click.BadParameter("must be an http(s) URL", param_hint="--pmtiles-url")
+    if not parsed.path.endswith(".pmtiles"):
+        raise click.BadParameter("URL path must end in .pmtiles", param_hint="--pmtiles-url")
+
+    try:
+        head = _requests.head(pmtiles_url, allow_redirects=True, timeout=10)
+    except _requests.RequestException as e:
+        click.echo(f"Error: HEAD {pmtiles_url} failed: {e}")
+        raise SystemExit(1)
+    if head.status_code // 100 != 2:
+        click.echo(f"Error: HEAD {pmtiles_url} returned {head.status_code}")
+        raise SystemExit(1)
+
+    if size_mb is None:
+        cl = head.headers.get("Content-Length")
+        if cl and cl.isdigit():
+            size_mb = int(cl) / (1024 * 1024)
+        else:
+            click.echo("Warning: server did not return Content-Length; pass --size-mb to set explicitly.")
+            size_mb = 0.0
+
+    # Ranged GET for magic-byte validation. Servers that ignore Range still
+    # send the full body but we cap the read at 127 bytes.
+    try:
+        r = _requests.get(pmtiles_url, headers={"Range": "bytes=0-126"}, timeout=15, stream=True)
+        header_bytes = r.raw.read(127)
+        r.close()
+    except _requests.RequestException as e:
+        click.echo(f"Error: range GET failed: {e}")
+        raise SystemExit(1)
+    if len(header_bytes) < 8 or header_bytes[0:7] != b"PMTiles":
+        click.echo(f"Error: URL does not appear to serve a PMTiles v3 file (magic={header_bytes[0:7]!r})")
+        raise SystemExit(1)
+    if header_bytes[7] != 3:
+        click.echo(f"Error: expected PMTiles v3, got v{header_bytes[7]}")
+        raise SystemExit(1)
+
+    click.echo(f"Validated remote PMTiles v3: {pmtiles_url} ({size_mb:.1f} MB)")
+
+    if dry_run:
+        click.echo("Dry run — validation passed, not updating catalog.")
+        return
+
+    # Issue #11: prefer the broker so users don't need AWS creds for catalog
+    # updates. Maintainers can opt out via HILLGEN_USE_DIRECT_S3=1.
+    if not os.environ.get("HILLGEN_USE_DIRECT_S3"):
+        from . import contribute_broker as cb
+        try:
+            resp = cb.submit_gallery_entry(
+                pmtiles_url=pmtiles_url,
+                title=title or Path(pmtiles_url).stem,
+                caption=caption or "",
+                author=author,
+                preview_url=preview_url,
+                size_mb=size_mb,
+            )
+        except cb.AuthError as e:
+            click.echo(f"Auth error: {e}")
+            click.echo("Set HILLGEN_USE_DIRECT_S3=1 to fall back to direct AWS catalog writes.")
+            raise SystemExit(1)
+        except cb.BrokerError as e:
+            click.echo(f"Catalog update failed: {e.code}: {e.message}")
+            raise SystemExit(1)
+
+        if resp.get("status") == "duplicate":
+            click.echo(f"Already in gallery: {pmtiles_url}")
+        else:
+            click.echo(f"✓ Catalog: https://scriptedrelief.com/gallery/catalog.json")
+            click.echo(f"Submission registered (no upload). {resp.get('count', '?')} total in gallery.")
+        return
+
+    # ── Maintainer fallback: direct boto3 ─────────────────────────────────
+
+    try:
+        import boto3
+        from botocore.exceptions import NoCredentialsError, ClientError
+    except ImportError:
+        click.echo("Error: boto3 required for HILLGEN_USE_DIRECT_S3 path. pip install boto3")
+        raise SystemExit(1)
+
+    bucket = "scriptedrelief"
+    catalog_key = "gallery/catalog.json"
+    try:
+        s3 = boto3.client("s3", region_name="us-east-2")
+        try:
+            obj = s3.get_object(Bucket=bucket, Key=catalog_key)
+            catalog = json.loads(obj["Body"].read())
+        except ClientError as e:
+            if e.response["Error"]["Code"] == "NoSuchKey":
+                catalog = {"submissions": []}
+            else:
+                raise
+
+        if any(s.get("pmtiles") == pmtiles_url for s in catalog.get("submissions", [])):
+            click.echo(f"Already in gallery: {pmtiles_url}")
+            return
+
+        default_title = re.sub(r"[_-]", " ", Path(parsed.path).stem).strip() or pmtiles_url
+        entry = {
+            "pmtiles": pmtiles_url,
+            "preview": preview_url,
+            "title": title or default_title,
+            "caption": caption or "",
+            "author": author or "anonymous",
+            "size_mb": round(size_mb, 1),
+            "submitted": datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
+        }
+        catalog.setdefault("submissions", []).append(entry)
+
+        s3.put_object(
+            Bucket=bucket,
+            Key=catalog_key,
+            Body=json.dumps(catalog, indent=2).encode(),
+            ContentType="application/json",
+            CacheControl="public, max-age=60",
+        )
+        click.echo(f"✓ Catalog: https://scriptedrelief.com/{catalog_key}")
+        click.echo(f"Submission registered (no upload). {len(catalog['submissions'])} total in gallery.")
+    except NoCredentialsError:
+        click.echo("Error: no AWS credentials found for catalog update.")
+        click.echo("Set AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY env vars, then retry.")
+        raise SystemExit(1)
+    except ClientError as e:
+        click.echo(f"Error updating catalog: {e}")
+        raise SystemExit(1)
+
+
+@cli.command()
+@click.argument("path", type=click.Path(exists=True), required=False)
 @click.option("--dry-run", is_flag=True, help="Validate only, don't upload")
 @click.option("--gallery", is_flag=True, help="Upload to community gallery (gallery/ prefix)")
 @click.option("--title", type=str, default=None, help="Display title for gallery entry")
@@ -962,16 +1171,48 @@ def view(path, port):
 @click.option("--description", type=str, default=None, help="Description for catalog entry")
 @click.option("--tags", type=str, default=None, help="Comma-separated tags for catalog entry")
 @click.option("--no-catalog", is_flag=True, help="Skip catalog.json update")
-def publish(path, dry_run, gallery, title, caption, author, preview, area, display_name, theme, description, tags, no_catalog):
+@click.option("--pmtiles-url", type=str, default=None,
+              help="Register a gallery submission pointing at an already-hosted PMTiles URL "
+                   "(skips upload). Requires --gallery.")
+@click.option("--preview-url", type=str, default=None,
+              help="URL of an already-hosted preview image; used with --pmtiles-url.")
+@click.option("--size-mb", type=float, default=None,
+              help="Manual size in MB for --pmtiles-url submissions (otherwise resolved via HEAD).")
+def publish(path, dry_run, gallery, title, caption, author, preview, area, display_name, theme, description, tags, no_catalog, pmtiles_url, preview_url, size_mb):
     """Publish a PMTiles file to scriptedrelief.com.
 
-    Default: uploads to tiles/ (curator use).
-    With --gallery: uploads to gallery/ for community submissions.
-    Requires AWS credentials with write access to s3://scriptedrelief.
-    Gallery contributors: set AWS_ACCESS_KEY_ID + AWS_SECRET_ACCESS_KEY env vars.
+    Default: uploads to tiles/ (curator use, requires AWS credentials).
+    With --gallery: routes the upload + catalog update through the broker
+    using your GitHub token (same auth as ``hillgen run --contribute``).
+    Set HILLGEN_USE_DIRECT_S3=1 to fall back to direct AWS uploads.
+
+    Use --pmtiles-url to register a gallery submission for a PMTiles file
+    that's already hosted (e.g. promoted from tiles/) without re-uploading.
     """
     import json
     import datetime
+
+    # ── Issue #10: --pmtiles-url short-circuit ─────────────────────────────
+    # Register a gallery submission pointing at an already-hosted PMTiles file,
+    # skipping upload entirely. Useful when the file is already in our S3
+    # bucket (e.g. under tiles/) and re-uploading 100s of MB would be wasteful.
+    if pmtiles_url:
+        if not gallery:
+            raise click.UsageError("--pmtiles-url only makes sense with --gallery")
+        if path:
+            raise click.UsageError("Provide either a PATH or --pmtiles-url, not both")
+        return _publish_url_only(
+            pmtiles_url=pmtiles_url,
+            preview_url=preview_url,
+            size_mb=size_mb,
+            title=title,
+            caption=caption,
+            author=author,
+            dry_run=dry_run,
+        )
+
+    if not path:
+        raise click.UsageError("Provide a PATH (or --pmtiles-url for --gallery submissions)")
 
     p = Path(path)
     if not p.suffix == ".pmtiles":
@@ -1003,6 +1244,16 @@ def publish(path, dry_run, gallery, title, caption, author, preview, area, displ
         click.echo("Dry run — validation passed, not uploading.")
         return
 
+    # Issue #11: route gallery uploads through the broker by default so
+    # contributors only need a GitHub token (same as --contribute). Maintainers
+    # who own AWS credentials can opt into direct boto3 with
+    # HILLGEN_USE_DIRECT_S3=1.
+    if gallery and not os.environ.get("HILLGEN_USE_DIRECT_S3"):
+        return _publish_gallery_via_broker(
+            p, preview=preview, size_mb=size_mb,
+            title=title, caption=caption, author=author,
+        )
+
     # Upload to S3
     try:
         import boto3
@@ -1015,11 +1266,25 @@ def publish(path, dry_run, gallery, title, caption, author, preview, area, displ
     prefix = "gallery/" if gallery else "tiles/"
     region = "us-east-2"
 
+    # Issue #9: when uploading to the curated library (non-gallery) and a
+    # `--area` slug is provided, organize under tiles/<area>/<file> to match
+    # the existing catalog convention (tiles/indiana-dunes/..., etc.).
+    area_subdir = ""
+    if not gallery and area:
+        # Defensive: keep the slug to a single path segment with no traversal.
+        slug = area.strip().strip("/").replace(" ", "-").lower()
+        if "/" in slug or ".." in slug or not slug:
+            raise click.BadParameter(
+                "must be a single path segment (e.g. 'death-valley'), no slashes",
+                param_hint="--area",
+            )
+        area_subdir = f"{slug}/"
+
     try:
         s3 = boto3.client("s3", region_name=region)
 
         # Upload PMTiles
-        key = f"{prefix}{p.name}"
+        key = f"{prefix}{area_subdir}{p.name}"
         click.echo(f"Uploading to s3://{bucket}/{key}...")
         s3.upload_file(
             str(p), bucket, key,
@@ -1032,7 +1297,7 @@ def publish(path, dry_run, gallery, title, caption, author, preview, area, displ
         if preview:
             prev_path = Path(preview)
             # Use PMTiles stem as prefix to ensure unique preview filenames
-            prev_key = f"{prefix}preview-{p.stem}{prev_path.suffix}"
+            prev_key = f"{prefix}{area_subdir}preview-{p.stem}{prev_path.suffix}"
             click.echo(f"Uploading preview to s3://{bucket}/{prev_key}...")
             s3.upload_file(
                 str(prev_path), bucket, prev_key,
@@ -1109,7 +1374,7 @@ def publish(path, dry_run, gallery, title, caption, author, preview, area, displ
                     else:
                         raise
 
-                pmtiles_rel = f"tiles/{p.name}"
+                pmtiles_rel = f"tiles/{area_subdir}{p.name}"
                 pmtiles_url = f"https://scriptedrelief.com/{pmtiles_rel}"
 
                 # Dedupe by pmtiles path
@@ -1152,6 +1417,55 @@ def publish(path, dry_run, gallery, title, caption, author, preview, area, displ
     except ClientError as e:
         click.echo(f"Error uploading: {e}")
         raise SystemExit(1)
+
+
+@cli.group()
+def auth():
+    """Inspect contributor authentication (GitHub via `gh` CLI)."""
+    pass
+
+
+@auth.command("status")
+def auth_status():
+    """Show whether a usable GitHub token is available for --contribute."""
+    from .contribute_broker import get_github_token, AuthError, DEFAULT_ENDPOINT
+    import os as _os
+
+    endpoint = _os.environ.get("HILLGEN_CONTRIBUTE_ENDPOINT", DEFAULT_ENDPOINT)
+    click.echo(f"Broker endpoint:  {endpoint}")
+
+    try:
+        token = get_github_token()
+    except AuthError as e:
+        click.secho(f"GitHub token:     ✗ {e}", fg="red")
+        click.echo("\nTo fix:")
+        click.echo("  1. Install gh:  brew install gh   (or https://cli.github.com)")
+        click.echo("  2. Log in:      gh auth login")
+        click.echo("  3. Verify:      hillgen auth status")
+        raise SystemExit(1)
+
+    # Verify the token works against GitHub.
+    try:
+        import requests
+        r = requests.get(
+            "https://api.github.com/user",
+            headers={"Authorization": f"Bearer {token}",
+                     "Accept": "application/vnd.github+json"},
+            timeout=5,
+        )
+        if r.status_code == 200:
+            username = r.json().get("login", "?")
+            click.secho(f"GitHub token:     ✓ valid (user: {username})", fg="green")
+            click.echo(
+                "\nNote: being authenticated does not mean you're on the contributor "
+                "allowlist. Open an issue at "
+                "https://github.com/emuehlstein/hillshade-generator to request access."
+            )
+        else:
+            click.secho(f"GitHub token:     ✗ rejected by GitHub ({r.status_code})", fg="red")
+            raise SystemExit(1)
+    except Exception as e:
+        click.secho(f"GitHub token:     ⚠ could not verify ({e})", fg="yellow")
 
 
 @cli.group()
