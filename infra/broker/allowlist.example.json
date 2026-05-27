@@ -1,0 +1,18 @@
+{
+  "version": 1,
+  "comment": "Edit this file and upload to s3://scriptedrelief-data/config/allowlist.json. Lambda caches it for 5 minutes.",
+  "contributors": [
+    {
+      "github": "emuehlstein",
+      "added": "2026-05-26",
+      "max_bytes": 5368709120,
+      "notes": "maintainer — 5 GiB per-file cap"
+    },
+    {
+      "github": "example-contributor",
+      "added": "2026-06-01",
+      "max_bytes": 2147483648,
+      "notes": "example entry — 2 GiB default cap"
+    }
+  ]
+}

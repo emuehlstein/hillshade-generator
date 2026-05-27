@@ -6,3 +6,8 @@ dist/
 build/
 *.egg
 output/
+
+# SAM build artifacts
+infra/broker/.aws-sam/
+infra/broker/samconfig.toml
+infra/broker/packaged.yaml
