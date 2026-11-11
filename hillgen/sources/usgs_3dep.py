@@ -100,9 +100,10 @@ class USGS3DEP10m:
         self._clip_to_bbox(merged, clipped, bbox)
 
         # Clean up merge temp if we created one
-        for f in output_dir.glob("_merged_*.tif"):
-            if f != clipped:
-                f.unlink()
+        for pattern in ("_merged_*.tif", "_merged_*.vrt"):
+            for f in output_dir.glob(pattern):
+                if f != clipped:
+                    f.unlink()
 
         if progress_cb:
             size_mb = clipped.stat().st_size / (1024 * 1024)
@@ -155,14 +156,25 @@ class USGS3DEP10m:
             raise
 
     def _merge_tiles(self, tiles: List[Path], output_dir: Path) -> Path:
-        """Merge multiple GeoTIFF tiles into one."""
+        """Merge multiple GeoTIFF tiles into one.
+
+        Uses gdalbuildvrt rather than gdal_merge.py. gdal_merge.py routes every
+        pixel through osgeo.gdal_array (numpy), which breaks outright when the
+        GDAL bindings' numpy ABI does not match the installed numpy:
+
+            ImportError: numpy._core.multiarray failed to import
+
+        It is also deprecated upstream, and materialises a full intermediate
+        raster. A VRT is a few KB, has no numpy dependency, and gdalwarp reads
+        it directly in the clip step that always follows.
+        """
         import hashlib
         key = hashlib.md5("|".join(str(t) for t in sorted(tiles)).encode()).hexdigest()[:8]
-        merged = output_dir / f"_merged_{key}.tif"
+        merged = output_dir / f"_merged_{key}.vrt"
         cmd = [
-            "gdal_merge.py", "-o", str(merged),
-            "-co", "COMPRESS=DEFLATE",
-            "-co", "BIGTIFF=IF_SAFER",
+            "gdalbuildvrt",
+            "-resolution", "highest",
+            str(merged),
         ] + [str(t) for t in tiles]
 
         subprocess.run(cmd, check=True, capture_output=True, text=True)

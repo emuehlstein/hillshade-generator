@@ -157,7 +157,7 @@ def generate_composite(
     with rasterio.open(layer_paths[0][0]) as src:
         profile = src.profile.copy()
         profile.update(dtype="uint8", compress="lzw", tiled=True,
-                       blockxsize=512, blockysize=512)
+                       blockxsize=512, blockysize=512, BIGTIFF="IF_SAFER")
         height, width = src.shape
 
         with rasterio.open(output_path, "w", **profile) as dst:

@@ -33,9 +33,10 @@ _WI_EAST = -86.8
 _WI_SOUTH = 42.4
 _WI_NORTH = 47.1
 
-# Max chunk size per request (degrees). ~0.25° ≈ ~27km at WI latitude.
-# Smaller chunks avoid service memory limits (500 errors at large sizes).
-_MAX_TILE_DEG = 0.25
+# Max chunk size per request (degrees). ~0.018° ≈ ~2km at WI latitude.
+# At 2048px per chunk this yields ~1m/px, matching the true LiDAR resolution.
+# Previous value was 0.25° which produced ~10-14m/px (same as 3DEP 10m).
+_MAX_TILE_DEG = 0.018
 # Max pixel dimension per request (service 500s above ~2048 for large areas)
 _MAX_PIXELS = 2048
 
@@ -139,27 +140,37 @@ def _chunk_bbox(bbox: BBox) -> List[BBox]:
 
 
 def _download_chunk(bbox: BBox, output_path: Path, session: requests.Session) -> Path:
-    """Download one chunk tile and save as GeoTIFF."""
+    """Download one chunk tile and save as GeoTIFF. Retries on 503/429 with backoff."""
+    import time
     if output_path.exists():
         return output_path
 
     url = _build_export_url(bbox)
     tmp = output_path.with_suffix(".tmp")
-    try:
-        with session.get(url, stream=True, timeout=120) as r:
-            r.raise_for_status()
-            ct = r.headers.get("Content-Type", "")
-            if "json" in ct or "html" in ct:
-                err = r.text[:300]
-                raise RuntimeError(f"Service returned non-image response: {err}")
-            with open(tmp, "wb") as f:
-                for chunk in r.iter_content(chunk_size=4 * 1024 * 1024):
-                    f.write(chunk)
-        tmp.rename(output_path)
-    except Exception:
-        if tmp.exists():
-            tmp.unlink()
-        raise
+    max_retries = 5
+    for attempt in range(max_retries):
+        try:
+            with session.get(url, stream=True, timeout=120) as r:
+                if r.status_code in (429, 503) and attempt < max_retries - 1:
+                    wait = 2 ** attempt * 3  # 3, 6, 12, 24s
+                    time.sleep(wait)
+                    continue
+                r.raise_for_status()
+                ct = r.headers.get("Content-Type", "")
+                if "json" in ct or "html" in ct:
+                    err = r.text[:300]
+                    raise RuntimeError(f"Service returned non-image response: {err}")
+                with open(tmp, "wb") as f:
+                    for chunk in r.iter_content(chunk_size=4 * 1024 * 1024):
+                        f.write(chunk)
+            tmp.rename(output_path)
+            return output_path
+        except Exception:
+            if tmp.exists():
+                tmp.unlink()
+            if attempt == max_retries - 1:
+                raise
+            time.sleep(2 ** attempt * 3)
     return output_path
 
 
@@ -182,6 +193,14 @@ class WiDNRLiDAR:
     def download(self, bbox: BBox, output_dir: Path, progress_cb=None) -> Path:
         """Download LiDAR DEM chunks, mosaic, clip, return GeoTIFF path."""
         output_dir.mkdir(parents=True, exist_ok=True)
+
+        # Fast path: final clipped output already exists (e.g. from a prior run)
+        clipped_early = output_dir / self._output_filename(bbox)
+        if clipped_early.exists():
+            if progress_cb:
+                size_mb = clipped_early.stat().st_size / (1024 * 1024)
+                progress_cb(f"DEM cached: {clipped_early.name} ({size_mb:.1f} MB)")
+            return clipped_early
 
         chunks = _chunk_bbox(bbox)
         if progress_cb:
@@ -222,8 +241,6 @@ class WiDNRLiDAR:
 
         # Reproject from EPSG:3071 → EPSG:4326 and clip to bbox in one gdalwarp call
         clipped = output_dir / self._output_filename(bbox)
-        if clipped.exists():
-            clipped.unlink()
         if progress_cb:
             progress_cb("Reprojecting EPSG:3071 → EPSG:4326 and clipping...")
         self._reproject_and_clip(merged, clipped, bbox)
@@ -235,30 +252,47 @@ class WiDNRLiDAR:
         return clipped
 
     def _mosaic(self, paths: List[Path], output_dir: Path) -> Path:
-        """Merge multiple GeoTIFF tiles into one using rasterio.merge."""
-        try:
-            import rasterio
-            from rasterio.merge import merge
+        """Merge chunk TIFFs into a single mosaic using gdalbuildvrt.
 
-            datasets = [rasterio.open(p) for p in paths]
-            mosaic, transform = merge(datasets)
-            meta = datasets[0].meta.copy()
-            meta.update({
-                "driver": "GTiff",
-                "height": mosaic.shape[1],
-                "width": mosaic.shape[2],
-                "transform": transform,
-                "compress": "deflate",
-                "tiled": True,
-            })
-            out = output_dir / "_wi_dnr_mosaic.tif"
-            with rasterio.open(out, "w", **meta) as dst:
-                dst.write(mosaic)
-            for ds in datasets:
-                ds.close()
-            return out
-        except ImportError:
-            # Fall back to gdal_merge.py
+        Returns the VRT directly — avoids a costly gdal_translate step for
+        large (1369-chunk, ~4B pixel) mosaics.  The VRT is a lightweight XML
+        file that gdalwarp can read just as well as a real GeoTIFF.
+        """
+        import os, subprocess as sp
+
+        # Write file list using an explicit path in output_dir (avoids macOS
+        # /var/folders tmpdir surprises and ensures the list is flushed before
+        # gdalbuildvrt opens it).
+        flist_path = output_dir / "_chunk_list.txt"
+        flist_path.write_text("\n".join(str(p) for p in sorted(paths)) + "\n")
+
+        vrt = output_dir / "_wi_dnr_mosaic.vrt"
+        r = sp.run(
+            ["gdalbuildvrt", "-input_file_list", str(flist_path), str(vrt)],
+            capture_output=True,
+        )
+        if r.returncode != 0:
+            raise RuntimeError(
+                f"gdalbuildvrt failed: {r.stderr.decode()[:400]}"
+            )
+
+        # Sanity check: VRT should cover a reasonable area
+        r2 = sp.run(["gdalinfo", str(vrt)], capture_output=True, text=True)
+        size_line = next((l for l in r2.stdout.splitlines() if l.strip().startswith("Size")), "")
+        # e.g. "Size is 72973, 71202"
+        parts = size_line.replace(",","").split()
+        if len(parts) >= 4:
+            w, h = int(parts[2]), int(parts[3])
+            if w < 50000 or h < 50000:
+                raise RuntimeError(
+                    f"VRT looks too small ({w}x{h}) — possible stale chunk list. "
+                    f"Delete {flist_path} and retry."
+                )
+
+        # Return the VRT directly — gdalwarp handles it fine
+        return vrt
+
+        if False:  # dead code — old gdal_merge fallback kept for reference
             out = output_dir / "_wi_dnr_mosaic.tif"
             cmd = [
                 "gdal_merge.py", "-o", str(out),
@@ -270,6 +304,11 @@ class WiDNRLiDAR:
 
     def _reproject_and_clip(self, src: Path, dst: Path, bbox: BBox):
         """Reproject from EPSG:3071 → EPSG:4326 and clip to WGS84 bbox in one pass."""
+        import os
+        # Use output dir as GDAL temp space to avoid home-disk space issues on
+        # large (72K×72K) mosaics. Home disk may have <20 GB free.
+        gdal_tmp = str(dst.parent)
+        env = {**os.environ, "GDAL_TMPDIR": gdal_tmp, "CPL_TMPDIR": gdal_tmp}
         cmd = [
             "gdalwarp",
             "-s_srs", "EPSG:3071",
@@ -277,14 +316,15 @@ class WiDNRLiDAR:
             "-r", "bilinear",
             "-te", str(bbox.west), str(bbox.south), str(bbox.east), str(bbox.north),
             "-te_srs", "EPSG:4326",
+            "-tr", "0.000009", "0.000009",  # lock to ~1m resolution; avoids auto-compute surprises
             "-co", "COMPRESS=DEFLATE",
             "-co", "TILED=YES",
             "-co", "BIGTIFF=IF_SAFER",
             str(src), str(dst),
         ]
-        result = subprocess.run(cmd, capture_output=True, text=True)
+        result = subprocess.run(cmd, capture_output=False, text=False, env=env)
         if result.returncode != 0:
-            raise RuntimeError(f"gdalwarp reproject+clip failed: {result.stderr}")
+            raise RuntimeError(f"gdalwarp reproject+clip failed (see stderr above)")
 
     def _output_filename(self, bbox: BBox) -> str:
         lat = (bbox.south + bbox.north) / 2
