@@ -13,6 +13,7 @@ import numpy as np
 import rasterio
 
 from ..themes.registry import Theme
+from .ramp import ramp_is_relative, materialize_ramp
 
 
 def apply_style(
@@ -21,6 +22,7 @@ def apply_style(
     theme: Theme,
     dem_path: Optional[Path] = None,
     progress_cb=None,
+    elev_range: Optional[tuple] = None,
 ) -> Path:
     """Apply a theme's color ramp to a grayscale hillshade.
 
@@ -40,6 +42,31 @@ def apply_style(
     if theme.color_mode == "elevation":
         if dem_path is None:
             raise ValueError("DEM path required for elevation color mode")
+
+        # gdaldem resolves "NN%" stops against THIS raster's own min/max. In a
+        # chunked build that silently gives every chunk a different
+        # elevation -> colour mapping, and the seams are obvious. Pin the ramp
+        # to a build-wide range when the caller supplies one.
+        if ramp_is_relative(ramp_path):
+            if elev_range is not None:
+                ramp_path = materialize_ramp(
+                    ramp_path,
+                    float(elev_range[0]),
+                    float(elev_range[1]),
+                    output_path.parent,
+                )
+                if progress_cb:
+                    progress_cb(
+                        f"  Ramp pinned to {elev_range[0]:g}..{elev_range[1]:g} "
+                        f"-> {ramp_path.name}"
+                    )
+            elif progress_cb:
+                progress_cb(
+                    f"  WARNING: ramp '{ramp_path.stem}' uses percentage stops and "
+                    "no --elev-range was given. Colours are relative to this tile's "
+                    "own min/max; chunks of a multi-chunk build will not match."
+                )
+
         return _apply_elevation_style(
             hillshade_path, dem_path, output_path, ramp_path, progress_cb
         )

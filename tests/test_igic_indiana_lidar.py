@@ -211,7 +211,7 @@ def test_auto_selects_usgs_outside_indiana():
     """resolve_source should fall back to USGS 3DEP outside any state-LiDAR coverage."""
     bbox = BBox(-105.1, 39.6, -104.9, 39.8)  # Denver — no state LiDAR source
     source = resolve_source(bbox)
-    assert source.name == "usgs-3dep-10m"
+    assert source.name in ("usgs-3dep-1m", "usgs-3dep-10m")
 
 
 def test_igic_priority_over_wi_dnr():

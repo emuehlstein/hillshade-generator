@@ -224,7 +224,33 @@ class ISGSILHMPSource:
         return self._county_map
 
     def covers(self, bbox: BBox) -> bool:
-        """Returns True if the bbox overlaps Illinois."""
+        """True if the bbox lies entirely within the Illinois footprint.
+
+        CONTAINMENT, not overlap. resolve_source("auto") takes the first
+        source whose covers() is True in priority order, and ISGS (88)
+        outranks the CONUS-wide 3DEP 1 m fallback (85). A source that
+        claims a bbox it only partly holds data for silently wins and
+        renders the uncovered remainder blank -- the same defect that
+        produced an all-blank 5 MB tileset from DOGAMI. A bbox that
+        straddles the Illinois line must fall through to 3DEP, which has
+        data on both sides.
+
+        CAVEAT: _IL_* is a crude rectangle with a small buffer, so it
+        still includes slivers of MO, IA, KY and IN along the ragged
+        river borders. Containment fixes edge-straddling boxes; it does
+        not make the footprint shape-accurate.
+
+        Use covers_partial() when you want the overlap test.
+        """
+        return (
+            bbox.west >= _IL_WEST
+            and bbox.east <= _IL_EAST
+            and bbox.south >= _IL_SOUTH
+            and bbox.north <= _IL_NORTH
+        )
+
+    def covers_partial(self, bbox: BBox) -> bool:
+        """True if the bbox overlaps the Illinois footprint at all."""
         return (
             bbox.west  < _IL_EAST
             and bbox.east  > _IL_WEST

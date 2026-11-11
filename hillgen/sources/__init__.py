@@ -7,18 +7,34 @@ from .wi_dnr_lidar import WiDNRLiDAR
 from .igic_indiana_lidar import IGICIndianaLiDAR
 from .isgs_ilhmp import ISGSILHMPSource
 from .copernicus_dem import CopernicusDEM30m
+from .or_dogami_lidar import ORDOGAMILidar
+from .usgs_3dep_1m import USGS3DEP1m, NoOneMeterCoverageError
+from .gmted2010 import GMTED2010_30s
 
-# Built-in sources, ordered by priority (highest first).
-# resolve_source(auto) picks the first source whose covers(bbox) is True.
-# Higher priority = finer resolution = preferred when coverage overlaps.
-_SOURCES = [
-    NPSSfMRainier2021(),   # priority=95 — 0.67m, MORA park boundary only
-    IGICIndianaLiDAR(),    # priority=92 — 0.76m, Indiana only (all 92 counties)
-    ISGSILHMPSource(),     # priority=88 — 0.3m,  Illinois only (all 102 counties)
-    WiDNRLiDAR(),          # priority=90 — 1m,    Wisconsin only
-    USGS3DEP10m(),         # priority=80 — 10m,   CONUS/AK/HI fallback
-    CopernicusDEM30m(),    # priority=10 — 30m,   global last-resort
-]
+# Built-in sources. resolve_source(auto) picks the first source whose
+# covers(bbox) is True, so ORDER IS SEMANTIC, not cosmetic.
+#
+# This list used to be hand-ordered and had already drifted out of order
+# (WiDNR priority=90 sat below ISGS priority=88). That was harmless only
+# because every state source has disjoint coverage. It stops being harmless
+# with the lidar sources added below: or-dogami-lidar (91, Oregon) and
+# usgs-3dep-1m (85, CONUS-wide wherever 1m lidar exists) genuinely overlap
+# across the whole of Oregon. So we now sort by priority explicitly and let
+# the declared number be the single source of truth.
+_SOURCES = sorted(
+    [
+        NPSSfMRainier2021(),   # priority=95 — 0.67m,  MORA park boundary only
+        IGICIndianaLiDAR(),    # priority=92 — 0.76m,  Indiana only (all 92 counties)
+        ORDOGAMILidar(),       # priority=91 — 0.914m, Oregon statewide bare-earth DTM
+        WiDNRLiDAR(),          # priority=90 — 1m,     Wisconsin only
+        ISGSILHMPSource(),     # priority=88 — 0.3m,   Illinois only (all 102 counties)
+        USGS3DEP1m(),          # priority=85 — 1m,     CONUS, only where 1m lidar exists
+        USGS3DEP10m(),         # priority=80 — 10m,    CONUS/AK/HI fallback
+        CopernicusDEM30m(),    # priority=10 — 30m,    global last-resort
+        GMTED2010_30s(),       # priority=5  — ~1km,   global, low-zoom/continental only
+    ],
+    key=lambda s: -s.priority,
+)
 
 # Lookup by name
 _SOURCE_MAP = {s.name: s for s in _SOURCES}

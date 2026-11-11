@@ -36,11 +36,17 @@ _DEM_MB_PER_SQ_DEG = {
     "igic-indiana-lidar": 500,   # 16MB tiles, ~5000ft x 5000ft, ~30 tiles/deg²
     "wi-dnr-lidar":      400,
     "nps-sfm-rainier-2021": 800,
+    # GMTED2010 30 arc-second: 20°x30° tiles of ~17 MB, i.e. ~0.03 MB/deg².
+    # Rounded up to 0.07 to cover the partial-tile case where a small bbox
+    # still pulls a whole 600 deg² tile.
+    "gmted2010-30s": 0.07,
 }
 _DEM_MB_PER_SQ_DEG_DEFAULT = 50
 
 # Rough processing time constants (seconds)
-_SHADE_SEC_PER_SQ_DEG = {"usgs-3dep-10m": 5, "igic-indiana-lidar": 30}
+# Shading cost tracks pixel count, not ground area, so a ~1km DEM is orders
+# of magnitude cheaper per square degree than a lidar one.
+_SHADE_SEC_PER_SQ_DEG = {"usgs-3dep-10m": 5, "igic-indiana-lidar": 30, "gmted2010-30s": 0.05}
 _SHADE_SEC_DEFAULT = 8
 _TILE_SEC_PER_TILE = 0.45
 
@@ -191,6 +197,24 @@ def sanity_check(
 
 
 
+
+def _parse_elev_range(ctx, param, value):
+    """Parse --elev-range "MIN,MAX" into a (float, float) tuple."""
+    if value is None:
+        return None
+    try:
+        lo, hi = [float(x) for x in str(value).replace(" ", "").split(",")]
+    except Exception:
+        raise click.BadParameter(
+            'expected "MIN,MAX" in metres, e.g. "-10,1900"', param_hint="--elev-range"
+        )
+    if not hi > lo:
+        raise click.BadParameter(
+            f"MAX must exceed MIN (got {lo}, {hi})", param_hint="--elev-range"
+        )
+    return (lo, hi)
+
+
 @click.group()
 def cli():
     """Generate beautiful, styled hillshade maps from real-world terrain data."""
@@ -262,7 +286,7 @@ def _get_gdal_version():
     return None
 
 
-def _ensure_styled(resolved_bbox, dem, theme_name, exaggeration):
+def _ensure_styled(resolved_bbox, dem, theme_name, exaggeration, elev_range=None):
     """Run fetch → reproject → shade → style, returning the styled raster path.
 
     Thin Click-layer wrapper around :func:`hillgen.pipeline.orchestrator.ensure_styled`
@@ -279,6 +303,7 @@ def _ensure_styled(resolved_bbox, dem, theme_name, exaggeration):
             exaggeration,
             allow_s3_pull=True,
             progress_cb=lambda msg: click.echo(msg),
+            elev_range=elev_range,
         )
     except ValueError as e:
         # Most commonly: unknown theme name.
@@ -498,11 +523,14 @@ def shade(bbox, place, dem, exaggeration, shading):
 @click.option("--place", type=str, help="Place name (geocoded via Nominatim)")
 @click.option("--dem", type=str, default="auto", help="DEM source")
 @click.option("--theme", "theme_name", type=str, required=True, help="Theme name or path to custom theme JSON")
+@click.option("--elev-range", "elev_range", type=str, default=None,
+              callback=_parse_elev_range,
+              help='Pin a percentage colour ramp to an absolute elevation range, "MIN,MAX" in metres. Required for consistent colours across a chunked build.')
 @click.option("--exaggeration", type=float, default=None, help="Override theme exaggeration")
-def style(bbox, place, dem, theme_name, exaggeration):
+def style(bbox, place, dem, theme_name, exaggeration, elev_range):
     """Apply a theme to a cached hillshade."""
     resolved_bbox = _resolve_bbox(bbox, place)
-    styled_path = _ensure_styled(resolved_bbox, dem, theme_name, exaggeration)
+    styled_path = _ensure_styled(resolved_bbox, dem, theme_name, exaggeration, elev_range=elev_range)
     click.echo(f"\nStyled output: {styled_path}")
 
 
@@ -511,12 +539,15 @@ def style(bbox, place, dem, theme_name, exaggeration):
 @click.option("--place", type=str, help="Place name (geocoded via Nominatim)")
 @click.option("--dem", type=str, default="auto", help="DEM source")
 @click.option("--theme", "theme_name", type=str, required=True, help="Theme name")
+@click.option("--elev-range", "elev_range", type=str, default=None,
+              callback=_parse_elev_range,
+              help='Pin a percentage colour ramp to an absolute elevation range, "MIN,MAX" in metres. Required for consistent colours across a chunked build.')
 @click.option("--exaggeration", type=float, default=None, help="Override theme exaggeration")
 @click.option("--zoom", type=str, default="10-16", help="Zoom range (e.g. 10-16)")
-def tile(bbox, place, dem, theme_name, exaggeration, zoom):
+def tile(bbox, place, dem, theme_name, exaggeration, zoom, elev_range):
     """Cut a styled raster into XYZ tiles."""
     resolved_bbox = _resolve_bbox(bbox, place)
-    styled_path = _ensure_styled(resolved_bbox, dem, theme_name, exaggeration)
+    styled_path = _ensure_styled(resolved_bbox, dem, theme_name, exaggeration, elev_range=elev_range)
 
     from .pipeline.tiler import generate_tiles
     from .cache import ensure_cache_dir
@@ -536,14 +567,17 @@ def tile(bbox, place, dem, theme_name, exaggeration, zoom):
 @click.option("--place", type=str, help="Place name (geocoded via Nominatim)")
 @click.option("--dem", type=str, default="auto", help="DEM source")
 @click.option("--theme", "theme_name", type=str, required=True, help="Theme name")
+@click.option("--elev-range", "elev_range", type=str, default=None,
+              callback=_parse_elev_range,
+              help='Pin a percentage colour ramp to an absolute elevation range, "MIN,MAX" in metres. Required for consistent colours across a chunked build.')
 @click.option("--exaggeration", type=float, default=None, help="Override theme exaggeration")
 @click.option("--zoom", type=str, default="10-16", help="Zoom range")
 @click.option("--format", "output_format", type=str, default="pmtiles,mbtiles", help="Output formats")
 @click.option("--output", type=click.Path(), help="Output directory")
-def package(bbox, place, dem, theme_name, exaggeration, zoom, output_format, output):
+def package(bbox, place, dem, theme_name, exaggeration, zoom, output_format, output, elev_range):
     """Package tiles into MBTiles and/or PMTiles."""
     resolved_bbox = _resolve_bbox(bbox, place)
-    styled_path = _ensure_styled(resolved_bbox, dem, theme_name, exaggeration)
+    styled_path = _ensure_styled(resolved_bbox, dem, theme_name, exaggeration, elev_range=elev_range)
 
     from .pipeline.tiler import generate_tiles
     from .pipeline.packager import package_mbtiles, package_pmtiles, metadata_from_raster
@@ -552,6 +586,10 @@ def package(bbox, place, dem, theme_name, exaggeration, zoom, output_format, out
 
     theme = get_theme(theme_name)
     exag = exaggeration or (theme.get_exaggeration_value() if theme else None) or 3.0
+    # Hypsometric ('elevation') themes paint the whole surface by altitude, so they
+    # are opaque and must be declared baselayer. 'ramp' themes are colour-relief
+    # over a hillshade and are meant to be drawn on top of something else.
+    layer_type = "baselayer" if theme and theme.color_mode == "elevation" else "overlay"
     cb = lambda msg: click.echo(msg)
 
     # Ensure tiles exist
@@ -580,6 +618,7 @@ def package(bbox, place, dem, theme_name, exaggeration, zoom, output_format, out
             bounds=meta["bounds"],
             center=f"{meta['center']},{min_z}",
             min_zoom=min_z, max_zoom=max_z,
+            layer_type=layer_type,
             progress_cb=cb,
         )
 
@@ -593,6 +632,7 @@ def package(bbox, place, dem, theme_name, exaggeration, zoom, output_format, out
                 bounds=meta["bounds"],
                 center=f"{meta['center']},{min_z}",
                 min_zoom=min_z, max_zoom=max_z,
+                layer_type=layer_type,
                 progress_cb=cb,
             )
         pmtiles_path = out_dir / f"{base_name}.pmtiles"
@@ -609,6 +649,9 @@ def package(bbox, place, dem, theme_name, exaggeration, zoom, output_format, out
 @click.option("--bbox", type=str, help="Bounding box: west,south,east,north")
 @click.option("--place", type=str, help="Place name (geocoded via Nominatim)")
 @click.option("--theme", type=str, required=True, help="Theme name")
+@click.option("--elev-range", "elev_range", type=str, default=None,
+              callback=_parse_elev_range,
+              help='Pin a percentage colour ramp to an absolute elevation range, "MIN,MAX" in metres. Required for consistent colours across a chunked build.')
 @click.option("--exaggeration", type=str, default=None, help="Vertical exaggeration (number or omit for auto)")
 @click.option("--dem", type=str, default="auto", help="DEM source")
 @click.option("--zoom", type=str, default="10-16", help="Zoom range")
@@ -626,7 +669,7 @@ def package(bbox, place, dem, theme_name, exaggeration, zoom, output_format, out
 @click.option("--estimate", is_flag=True, help="Show size/time estimate and exit without running")
 def run(bbox, place, theme, exaggeration, dem, zoom, output_format, output,
         keep_intermediates, contribute, no_cache, s3_cache, buffer_deg, stop_after, start_from,
-        yes, force, estimate):
+        yes, force, estimate, elev_range):
     """Full pipeline: fetch → reproject → shade → style → tile → package."""
     resolved_bbox = _resolve_bbox(bbox, place, buffer_deg=buffer_deg)
     cb = lambda msg: click.echo(msg)
@@ -677,10 +720,10 @@ def run(bbox, place, theme, exaggeration, dem, zoom, output_format, output,
 
     # Stages 0-3 (fetch through style) are handled by _ensure_styled
     if stop_idx >= 3:
-        styled_path = _ensure_styled(resolved_bbox, dem, theme, exaggeration)
+        styled_path = _ensure_styled(resolved_bbox, dem, theme, exaggeration, elev_range=elev_range)
     elif stop_idx >= 0:
         # Partial run — just run up to the requested stage
-        styled_path = _ensure_styled(resolved_bbox, dem, theme, exaggeration)
+        styled_path = _ensure_styled(resolved_bbox, dem, theme, exaggeration, elev_range=elev_range)
         if stop_after in ("fetch", "reproject", "shade", "style"):
             click.echo(f"\nStopped after: {stop_after}")
             return
@@ -711,6 +754,7 @@ def run(bbox, place, theme, exaggeration, dem, zoom, output_format, output,
 
     theme_obj = _get_theme(theme)
     exag = exaggeration or (theme_obj.get_exaggeration_value() if theme_obj else None) or 3.0
+    layer_type = "baselayer" if theme_obj and theme_obj.color_mode == "elevation" else "overlay"
 
     out_dir = Path(output) if output else Path("./output")
     out_dir.mkdir(parents=True, exist_ok=True)
@@ -728,7 +772,7 @@ def run(bbox, place, theme, exaggeration, dem, zoom, output_format, output,
             name=base_name,
             description=f"{theme} hillshade, {exag}x exaggeration",
             bounds=meta["bounds"], center=f"{meta['center']},{min_z}",
-            min_zoom=min_z, max_zoom=max_z, progress_cb=cb,
+            min_zoom=min_z, max_zoom=max_z, layer_type=layer_type, progress_cb=cb,
         )
 
     if "pmtiles" in formats:
@@ -737,7 +781,7 @@ def run(bbox, place, theme, exaggeration, dem, zoom, output_format, output,
             package_mbtiles(
                 tiles_dir, mbtiles_path, name=base_name,
                 bounds=meta["bounds"], center=f"{meta['center']},{min_z}",
-                min_zoom=min_z, max_zoom=max_z, progress_cb=cb,
+                min_zoom=min_z, max_zoom=max_z, layer_type=layer_type, progress_cb=cb,
             )
         pmtiles_path = out_dir / f"{base_name}.pmtiles"
         package_pmtiles(mbtiles_path, pmtiles_path, progress_cb=cb)
@@ -1184,6 +1228,7 @@ def _publish_url_only(
 @click.option("--name", "display_name", type=str, default=None, help="Display name for catalog entry")
 @click.option("--theme", type=str, default=None, help="Theme name for catalog entry")
 @click.option("--description", type=str, default=None, help="Description for catalog entry")
+@click.option("--dem-source", type=str, default=None, help="DEM source label for catalog entry (e.g. 'GMTED2010 30 arc-second')")
 @click.option("--tags", type=str, default=None, help="Comma-separated tags for catalog entry")
 @click.option("--no-catalog", is_flag=True, help="Skip catalog.json update")
 @click.option("--pmtiles-url", type=str, default=None,
@@ -1193,7 +1238,7 @@ def _publish_url_only(
               help="URL of an already-hosted preview image; used with --pmtiles-url.")
 @click.option("--size-mb", type=float, default=None,
               help="Manual size in MB for --pmtiles-url submissions (otherwise resolved via HEAD).")
-def publish(path, dry_run, gallery, title, caption, author, preview, area, display_name, theme, description, tags, no_catalog, pmtiles_url, preview_url, size_mb):
+def publish(path, dry_run, gallery, title, caption, author, preview, area, display_name, theme, description, dem_source, tags, no_catalog, pmtiles_url, preview_url, size_mb):
     """Publish a PMTiles file to scriptedrelief.com.
 
     Default: uploads to tiles/ (curator use, requires AWS credentials).
@@ -1371,6 +1416,31 @@ def publish(path, dry_run, gallery, title, caption, author, preview, area, displ
                 # Parse metadata from filename if not provided
                 # Expected pattern: {source}_{lat}_{lon}_{crs}_{theme}_{exag}x.pmtiles
                 import re
+                import struct
+
+                def _pmtiles_header_meta(path):
+                    """Read zoom range and bounds straight out of the PMTiles v3 header.
+
+                    These were previously hardcoded to [10, 16] / 3DEP, which is
+                    wrong for any layer that isn't a 3DEP county build, and bounds
+                    and center were omitted entirely so the web map had nothing to
+                    fit to. The v3 header is a fixed 127-byte struct, so this needs
+                    no extra dependency.
+                    """
+                    with open(path, "rb") as fh:
+                        head = fh.read(127)
+                    if len(head) < 127 or head[:7] != b"PMTiles":
+                        return None
+                    min_zoom, max_zoom = head[100], head[101]
+                    vals = struct.unpack("<iiii", head[102:118])
+                    min_lon, min_lat, max_lon, max_lat = (v / 1e7 for v in vals)
+                    c_lon, c_lat = (v / 1e7 for v in struct.unpack("<ii", head[119:127]))
+                    return {
+                        "zoom": [int(min_zoom), int(max_zoom)],
+                        "bounds": [round(min_lon, 4), round(min_lat, 4),
+                                   round(max_lon, 4), round(max_lat, 4)],
+                        "center": [round(c_lon, 4), round(c_lat, 4)],
+                    }
                 stem = p.stem  # e.g. 3dep_n40.53_w112.14_4326_vivid-elevation_9.0x
                 parsed_theme = None
                 parsed_exag = None
@@ -1394,36 +1464,50 @@ def publish(path, dry_run, gallery, title, caption, author, preview, area, displ
 
                 # Dedupe by pmtiles path
                 existing = [l for l in catalog.get("layers", []) if l.get("pmtiles") == pmtiles_rel]
-                if existing:
-                    click.echo(f"Already in catalog: {pmtiles_rel}")
+
+                entry = {
+                    "area": area or stem,
+                    "name": display_name or area or stem,
+                    "theme": theme or parsed_theme or "",
+                    "description": description or "",
+                    "exaggeration": parsed_exag or 1.0,
+                    "dem_source": dem_source or "unspecified",
+                    "pmtiles": pmtiles_rel,
+                    "size_mb": round(size_mb, 1),
+                }
+
+                # Real zoom/bounds/center from the file, not assumed defaults.
+                hdr = _pmtiles_header_meta(p)
+                if hdr:
+                    entry.update(hdr)
                 else:
-                    entry = {
-                        "area": area or stem,
-                        "name": display_name or area or stem,
-                        "theme": theme or parsed_theme or "",
-                        "description": description or "",
-                        "exaggeration": parsed_exag or 1.0,
-                        "dem_source": "USGS 3DEP 1/3 arc-second",
-                        "zoom": [10, 16],
-                        "pmtiles": pmtiles_rel,
-                        "size_mb": round(size_mb, 1),
-                    }
-                    if tags:
-                        entry["tags"] = [t.strip() for t in tags.split(",")]
-                    if preview_url:
-                        entry["preview"] = preview_url
+                    click.echo("Warning: could not read PMTiles header; "
+                               "zoom/bounds/center omitted from catalog entry.")
 
+                if tags:
+                    entry["tags"] = [t.strip() for t in tags.split(",")]
+                if preview_url:
+                    entry["preview"] = preview_url
+
+                if existing:
+                    # Re-publishing the same path should correct the entry,
+                    # not silently leave stale metadata in the catalog.
+                    for k, v in entry.items():
+                        if v not in ("", None):
+                            existing[0][k] = v
+                    click.echo(f"Updated catalog entry: {pmtiles_rel}")
+                else:
                     catalog.setdefault("layers", []).append(entry)
-                    catalog["generated"] = datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+                catalog["generated"] = datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
 
-                    s3.put_object(
-                        Bucket=bucket,
-                        Key=catalog_key,
-                        Body=json.dumps(catalog, indent=2).encode(),
-                        ContentType="application/json",
-                        CacheControl="public, max-age=60",
-                    )
-                    click.echo(f"✓ Catalog: https://scriptedrelief.com/{catalog_key} ({len(catalog['layers'])} layers)")
+                s3.put_object(
+                    Bucket=bucket,
+                    Key=catalog_key,
+                    Body=json.dumps(catalog, indent=2).encode(),
+                    ContentType="application/json",
+                    CacheControl="public, max-age=60",
+                )
+                click.echo(f"✓ Catalog: https://scriptedrelief.com/{catalog_key} ({len(catalog['layers'])} layers)")
 
     except NoCredentialsError:
         click.echo("Error: no AWS credentials found.")

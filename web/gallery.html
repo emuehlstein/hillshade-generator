@@ -592,14 +592,19 @@ function initModalMap(entry) {
   // Basemap (OSM default, below hillshade)
   _addBasemap('osm');
 
-  // PMTiles hillshade layer on top
+  // PMTiles hillshade layer on top — use a custom pane above basemap
+  if (!modalMap.getPane('hillshadePane')) {
+    modalMap.createPane('hillshadePane');
+    modalMap.getPane('hillshadePane').style.zIndex = 450;
+    modalMap.getPane('hillshadePane').style.pointerEvents = 'none';
+  }
   const pmt = new pmtiles.PMTiles(entry.pmtiles);
   hillshadeLayer = pmtiles.leafletRasterLayer(pmt, {
     attribution: entry.author ? `© ${entry.author}` : '',
     maxNativeZoom: 18,
     maxZoom: 20,
     opacity: 1.0,
-    pane: 'overlayPane',
+    pane: 'hillshadePane',
   });
   hillshadeLayer.addTo(modalMap);
 

@@ -83,7 +83,7 @@ def test_export_url_bbox_is_projected():
 # ── Chunking ─────────────────────────────────────────────────────────────────
 
 def test_small_bbox_no_chunking():
-    bbox = BBox(-88.5, 43.0, -88.3, 43.2)  # 0.2° x 0.2°, under 0.25° threshold
+    bbox = BBox(-88.5, 43.0, -88.49, 43.01)  # 0.01° x 0.01°, under 0.018° threshold
     chunks = _chunk_bbox(bbox)
     assert len(chunks) == 1
     assert chunks[0] == bbox
@@ -122,7 +122,7 @@ def test_auto_selects_usgs_outside_wisconsin():
     """resolve_source should fall back to USGS 3DEP outside any state-LiDAR coverage."""
     bbox = BBox(-105.1, 39.6, -104.9, 39.8)  # Denver — no state LiDAR source
     source = resolve_source(bbox)
-    assert source.name == "usgs-3dep-10m"
+    assert source.name in ("usgs-3dep-1m", "usgs-3dep-10m")
 
 
 # ── Source metadata ───────────────────────────────────────────────────────────

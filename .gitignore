@@ -6,6 +6,7 @@ dist/
 build/
 *.egg
 output/
+.DS_Store
 
 # SAM build artifacts
 infra/broker/.aws-sam/

@@ -61,6 +61,7 @@ def ensure_styled(
     *,
     allow_s3_pull: bool = True,
     progress_cb: Optional[ProgressCb] = None,
+    elev_range: Optional[tuple] = None,
 ) -> Path:
     """Run fetch → reproject → shade → style, returning the styled raster path.
 
@@ -148,12 +149,16 @@ def ensure_styled(
 
     # ── Style ──────────────────────────────────────────────────────────────
     styled_dir = ensure_cache_dir("styled")
-    styled_path = styled_dir / f"{input_dem.stem}_{theme.name}_{exag}x.tif"
+    # A pinned elevation range changes the colours, so it must be part of the
+    # cache key or chunked builds would silently reuse an unpinned raster.
+    range_tag = f"_elev{elev_range[0]:g}-{elev_range[1]:g}" if elev_range else ""
+    styled_path = styled_dir / f"{input_dem.stem}_{theme.name}_{exag}x{range_tag}.tif"
     if cache_lookup("styled", styled_path,
                     allow_s3=allow_s3_pull, progress_cb=cb):
         cb(f"Styled cached: {styled_path.name}")
     else:
         elev_dem = input_dem if theme.color_mode == "elevation" else None
-        apply_style(hs_path, styled_path, theme, dem_path=elev_dem, progress_cb=cb)
+        apply_style(hs_path, styled_path, theme, dem_path=elev_dem, progress_cb=cb,
+                    elev_range=elev_range)
 
     return styled_path

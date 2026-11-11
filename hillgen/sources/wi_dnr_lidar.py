@@ -33,9 +33,10 @@ _WI_EAST = -86.8
 _WI_SOUTH = 42.4
 _WI_NORTH = 47.1
 
-# Max chunk size per request (degrees). ~0.25° ≈ ~27km at WI latitude.
-# Smaller chunks avoid service memory limits (500 errors at large sizes).
-_MAX_TILE_DEG = 0.25
+# Max chunk size per request (degrees). ~0.018° ≈ ~2km at WI latitude.
+# At 2048px per chunk this yields ~1m/px, matching the true LiDAR resolution.
+# Previous value was 0.25° which produced ~10-14m/px (same as 3DEP 10m).
+_MAX_TILE_DEG = 0.018
 # Max pixel dimension per request (service 500s above ~2048 for large areas)
 _MAX_PIXELS = 2048
 
@@ -139,27 +140,37 @@ def _chunk_bbox(bbox: BBox) -> List[BBox]:
 
 
 def _download_chunk(bbox: BBox, output_path: Path, session: requests.Session) -> Path:
-    """Download one chunk tile and save as GeoTIFF."""
+    """Download one chunk tile and save as GeoTIFF. Retries on 503/429 with backoff."""
+    import time
     if output_path.exists():
         return output_path
 
     url = _build_export_url(bbox)
     tmp = output_path.with_suffix(".tmp")
-    try:
-        with session.get(url, stream=True, timeout=120) as r:
-            r.raise_for_status()
-            ct = r.headers.get("Content-Type", "")
-            if "json" in ct or "html" in ct:
-                err = r.text[:300]
-                raise RuntimeError(f"Service returned non-image response: {err}")
-            with open(tmp, "wb") as f:
-                for chunk in r.iter_content(chunk_size=4 * 1024 * 1024):
-                    f.write(chunk)
-        tmp.rename(output_path)
-    except Exception:
-        if tmp.exists():
-            tmp.unlink()
-        raise
+    max_retries = 5
+    for attempt in range(max_retries):
+        try:
+            with session.get(url, stream=True, timeout=120) as r:
+                if r.status_code in (429, 503) and attempt < max_retries - 1:
+                    wait = 2 ** attempt * 3  # 3, 6, 12, 24s
+                    time.sleep(wait)
+                    continue
+                r.raise_for_status()
+                ct = r.headers.get("Content-Type", "")
+                if "json" in ct or "html" in ct:
+                    err = r.text[:300]
+                    raise RuntimeError(f"Service returned non-image response: {err}")
+                with open(tmp, "wb") as f:
+                    for chunk in r.iter_content(chunk_size=4 * 1024 * 1024):
+                        f.write(chunk)
+            tmp.rename(output_path)
+            return output_path
+        except Exception:
+            if tmp.exists():
+                tmp.unlink()
+            if attempt == max_retries - 1:
+                raise
+            time.sleep(2 ** attempt * 3)
     return output_path
 
 
@@ -182,6 +193,14 @@ class WiDNRLiDAR:
     def download(self, bbox: BBox, output_dir: Path, progress_cb=None) -> Path:
         """Download LiDAR DEM chunks, mosaic, clip, return GeoTIFF path."""
         output_dir.mkdir(parents=True, exist_ok=True)
+
+        # Fast path: final clipped output already exists (e.g. from a prior run)
+        clipped_early = output_dir / self._output_filename(bbox)
+        if clipped_early.exists():
+            if progress_cb:
+                size_mb = clipped_early.stat().st_size / (1024 * 1024)
+                progress_cb(f"DEM cached: {clipped_early.name} ({size_mb:.1f} MB)")
+            return clipped_early
 
         chunks = _chunk_bbox(bbox)
         if progress_cb:
@@ -222,8 +241,6 @@ class WiDNRLiDAR:
 
         # Reproject from EPSG:3071 → EPSG:4326 and clip to bbox in one gdalwarp call
         clipped = output_dir / self._output_filename(bbox)
-        if clipped.exists():
-            clipped.unlink()
         if progress_cb:
             progress_cb("Reprojecting EPSG:3071 → EPSG:4326 and clipping...")
         self._reproject_and_clip(merged, clipped, bbox)
@@ -294,6 +311,7 @@ class WiDNRLiDAR:
             "-r", "bilinear",
             "-te", str(bbox.west), str(bbox.south), str(bbox.east), str(bbox.north),
             "-te_srs", "EPSG:4326",
+            "-tr", "0.000009", "0.000009",  # lock to ~1m resolution; avoids auto-compute surprises
             "-co", "COMPRESS=DEFLATE",
             "-co", "TILED=YES",
             "-co", "BIGTIFF=IF_SAFER",
