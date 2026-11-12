@@ -26,7 +26,7 @@ import subprocess
 from pathlib import Path
 from typing import List
 
-from .base import BBox
+from .base import BBox, merge_rasters
 
 # OpenTopography S3 endpoint (anonymous access)
 _OT_S3_ENDPOINT = "https://opentopography.s3.sdsc.edu"
@@ -77,7 +77,7 @@ class NPSSfMRainier2021:
         Large bboxes are automatically split into tiles (≤0.2° per side) to
         avoid macOS killing gdalwarp under memory pressure at 0.67m resolution.
         Each tile is fetched separately via /vsicurl/ and the results are
-        merged with gdal_merge.py into a single output GeoTIFF.
+        merged via gdalbuildvrt into a single output GeoTIFF.
         """
         output_dir.mkdir(parents=True, exist_ok=True)
         output_path = output_dir / self._output_filename(bbox)
@@ -150,16 +150,7 @@ class NPSSfMRainier2021:
         else:
             if progress_cb:
                 progress_cb(f"Merging {len(tile_paths)} tiles...")
-            cmd = [
-                "gdal_merge.py",
-                "-o", str(output_path),
-                "-co", "COMPRESS=DEFLATE",
-                "-co", "TILED=YES",
-                "-co", "BIGTIFF=IF_SAFER",
-            ] + [str(p) for p in tile_paths]
-            result = subprocess.run(cmd, capture_output=True, text=True)
-            if result.returncode != 0:
-                raise RuntimeError(f"gdal_merge failed:\n{result.stderr}")
+            merge_rasters(tile_paths, output_path)
             # Clean up individual tiles
             for p in tile_paths:
                 p.unlink(missing_ok=True)

@@ -40,13 +40,21 @@ _DEM_MB_PER_SQ_DEG = {
     # Rounded up to 0.07 to cover the partial-tile case where a small bbox
     # still pulls a whole 600 deg² tile.
     "gmted2010-30s": 0.07,
+    "gmted2010-15s": 0.28,
+    "gmted2010-7.5s": 1.11,
 }
 _DEM_MB_PER_SQ_DEG_DEFAULT = 50
 
 # Rough processing time constants (seconds)
 # Shading cost tracks pixel count, not ground area, so a ~1km DEM is orders
 # of magnitude cheaper per square degree than a lidar one.
-_SHADE_SEC_PER_SQ_DEG = {"usgs-3dep-10m": 5, "igic-indiana-lidar": 30, "gmted2010-30s": 0.05}
+_SHADE_SEC_PER_SQ_DEG = {
+    "usgs-3dep-10m": 5,
+    "igic-indiana-lidar": 30,
+    "gmted2010-30s": 0.05,
+    "gmted2010-15s": 0.2,
+    "gmted2010-7.5s": 0.8,
+}
 _SHADE_SEC_DEFAULT = 8
 _TILE_SEC_PER_TILE = 0.45
 

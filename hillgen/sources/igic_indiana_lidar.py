@@ -36,7 +36,7 @@ from typing import Optional
 
 import requests
 
-from .base import BBox
+from .base import BBox, merge_rasters
 
 _BASE_URL = "https://lidar.digitalforestry.org"
 _TILE_INDEX_URL = f"{_BASE_URL}/gis_layers/tilemap_{{county}}.geojson"
@@ -165,17 +165,8 @@ def _download_tile(url: str, output: Path, session: requests.Session) -> Path:
 
 
 def _mosaic_tiles(paths: list[Path], output: Path) -> Path:
-    """Merge multiple GeoTIFF/HFA tiles into one with gdal_merge.py."""
-    cmd = [
-        "gdal_merge.py", "-o", str(output),
-        "-co", "COMPRESS=DEFLATE",
-        "-co", "BIGTIFF=IF_SAFER",
-        "-a_nodata", "-9999",
-    ] + [str(p) for p in paths]
-    result = subprocess.run(cmd, capture_output=True, text=True)
-    if result.returncode != 0:
-        raise RuntimeError(f"gdal_merge.py failed: {result.stderr[:500]}")
-    return output
+    """Merge multiple GeoTIFF/HFA tiles into one."""
+    return merge_rasters(paths, output, dst_nodata="-9999", tiled=False)
 
 
 def _reproject_and_clip(src: Path, dst: Path, bbox: BBox) -> None:
