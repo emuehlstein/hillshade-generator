@@ -25,7 +25,7 @@ import urllib.request
 from pathlib import Path
 from typing import Dict, List, Optional, Tuple
 
-from .base import BBox
+from .base import BBox, merge_rasters
 
 # Illinois bounding box (with small buffer)
 _IL_WEST  = -91.6
@@ -295,7 +295,7 @@ class ISGSILHMPSource:
         """Download ILHMP DEM for bbox via ImageServer exportImage.
 
         Tiles the request to respect server limits (15000×4100 px/call),
-        downloads each tile sequentially, merges with gdal_merge.py, and
+        downloads each tile sequentially, merges via gdalbuildvrt, and
         clips to the exact bbox.
 
         Returns path to the merged, clipped GeoTIFF (WGS84 / EPSG:4326, F32).
@@ -481,17 +481,5 @@ def _download_tiles(
 
 
 def _merge_tiles(tile_paths: List[Path], output_path: Path) -> None:
-    """Merge downloaded tiles into a single GeoTIFF using gdal_merge.py."""
-    cmd = [
-        "gdal_merge.py",
-        "-o", str(output_path),
-        "-of", "GTiff",
-        "-co", "COMPRESS=DEFLATE",
-        "-co", "TILED=YES",
-        "-co", "BIGTIFF=IF_SAFER",
-        "-n", "3.4e+38",
-        "-a_nodata", "nan",
-    ] + [str(p) for p in tile_paths]
-    r = subprocess.run(cmd, capture_output=True, text=True)
-    if r.returncode != 0:
-        raise RuntimeError(f"gdal_merge.py failed: {r.stderr}")
+    """Merge downloaded tiles into a single GeoTIFF."""
+    merge_rasters(tile_paths, output_path, src_nodata="3.4e+38", dst_nodata="nan")

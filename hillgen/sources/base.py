@@ -1,8 +1,9 @@
 """Base class for DEM sources."""
 
+import subprocess
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Protocol
+from typing import Optional, Protocol, Sequence
 
 
 @dataclass(frozen=True)
@@ -59,3 +60,44 @@ class DEMSource(Protocol):
             Path to the merged GeoTIFF
         """
         ...
+
+
+def merge_rasters(
+    inputs: Sequence[Path],
+    output: Path,
+    *,
+    src_nodata: Optional[str] = None,
+    dst_nodata: Optional[str] = None,
+    tiled: bool = True,
+) -> Path:
+    """Mosaic rasters into one GeoTIFF via gdalbuildvrt + gdal_translate.
+
+    Avoids gdal_merge.py, which needs numpy inside GDAL's own Python
+    (not shipped by Homebrew) and is deprecated upstream.
+    """
+    vrt = output.with_suffix(".vrt")
+    cmd = ["gdalbuildvrt", "-resolution", "highest"]
+    if src_nodata is not None:
+        cmd += ["-srcnodata", src_nodata]
+    if dst_nodata is not None:
+        cmd += ["-vrtnodata", dst_nodata]
+    cmd += [str(vrt)] + [str(p) for p in inputs]
+    r = subprocess.run(cmd, capture_output=True, text=True)
+    if r.returncode != 0:
+        raise RuntimeError(f"gdalbuildvrt failed: {r.stderr[:500]}")
+
+    cmd = [
+        "gdal_translate", "-of", "GTiff",
+        "-co", "COMPRESS=DEFLATE",
+        "-co", "BIGTIFF=IF_SAFER",
+    ]
+    if tiled:
+        cmd += ["-co", "TILED=YES"]
+    if dst_nodata is not None:
+        cmd += ["-a_nodata", dst_nodata]
+    cmd += [str(vrt), str(output)]
+    r = subprocess.run(cmd, capture_output=True, text=True)
+    vrt.unlink(missing_ok=True)
+    if r.returncode != 0:
+        raise RuntimeError(f"gdal_translate failed: {r.stderr[:500]}")
+    return output

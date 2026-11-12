@@ -27,7 +27,7 @@ from typing import List, Tuple
 
 import requests
 
-from .base import BBox
+from .base import BBox, merge_rasters
 
 
 _S3_BASE = "https://copernicus-dem-30m.s3.amazonaws.com"
@@ -184,13 +184,7 @@ class CopernicusDEM30m:
         import hashlib
         key = hashlib.md5("|".join(str(t) for t in sorted(tiles)).encode()).hexdigest()[:8]
         merged = output_dir / f"_merged_{key}.tif"
-        cmd = [
-            "gdal_merge.py", "-o", str(merged),
-            "-co", "COMPRESS=DEFLATE",
-            "-co", "BIGTIFF=IF_SAFER",
-        ] + [str(t) for t in tiles]
-        subprocess.run(cmd, check=True, capture_output=True, text=True)
-        return merged
+        return merge_rasters(tiles, merged, tiled=False)
 
     def _clip_to_bbox(self, input_path: Path, output_path: Path, bbox: BBox):
         cmd = [
