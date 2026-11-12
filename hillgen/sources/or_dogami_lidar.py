@@ -43,6 +43,7 @@ Priority:   91
 """
 
 import math
+import os
 import re
 import subprocess
 import time
@@ -388,40 +389,62 @@ def _fetch_tiff(url: str, dest: Path, label: str = "") -> None:
     curl rather than urllib: the endpoint is slow to first byte on large
     tiles and is friendlier to a curl User-Agent.
     """
-    last = ""
-    for attempt in range(1, _HTTP_RETRIES + 1):
-        proc = subprocess.run(
-            [
-                "curl", "-sS",
-                "--max-time", "900",
-                "--connect-timeout", "30",
-                "-w", "%{http_code}",
-                "-o", str(dest),
-                url,
-            ],
-            capture_output=True, text=True,
-        )
-        code = (proc.stdout or "").strip()[-3:]
-        if proc.returncode == 0 and code == "200":
-            # The server answers bad requests with a 200 HTML/JSON error page,
-            # so sniff the magic bytes before trusting it.
+    # The tile cache is shared by concurrent workers building overlapping
+    # boxes, so a tile may already have been completed by someone else.
+    if dest.exists() and dest.stat().st_size > 0:
+        try:
             with open(dest, "rb") as fh:
-                magic = fh.read(2)
-            if magic in (b"II", b"MM"):
-                return
-            snippet = dest.read_text(errors="replace")[:300]
-            raise RuntimeError(
-                f"DOGAMI tile {label} returned non-TIFF response:\n{snippet}"
+                if fh.read(2) in (b"II", b"MM"):
+                    return
+        except OSError:
+            pass
+
+    # Download to a pid-unique temp file and move it into place atomically.
+    # Writing straight to dest let a second worker read a half-written tile
+    # ("TIFFReadEncodedTile ... got 20107 bytes, expected 65536"), and the
+    # old unconditional dest.unlink() on failure deleted tiles another
+    # worker was about to open (FileNotFoundError). Both took down adjacent
+    # overlapping boxes hours into a run.
+    tmp = dest.with_name(f"{dest.name}.{os.getpid()}.part")
+    last = ""
+    try:
+        for attempt in range(1, _HTTP_RETRIES + 1):
+            proc = subprocess.run(
+                [
+                    "curl", "-sS",
+                    "--max-time", "900",
+                    "--connect-timeout", "30",
+                    "-w", "%{http_code}",
+                    "-o", str(tmp),
+                    url,
+                ],
+                capture_output=True, text=True,
             )
+            code = (proc.stdout or "").strip()[-3:]
+            if proc.returncode == 0 and code == "200":
+                # The server answers bad requests with a 200 HTML/JSON error page,
+                # so sniff the magic bytes before trusting it.
+                with open(tmp, "rb") as fh:
+                    magic = fh.read(2)
+                if magic in (b"II", b"MM"):
+                    os.replace(tmp, dest)
+                    return
+                snippet = tmp.read_text(errors="replace")[:300]
+                raise RuntimeError(
+                    f"DOGAMI tile {label} returned non-TIFF response:\n{snippet}"
+                )
 
-        last = f"exit={proc.returncode} http={code} {proc.stderr[:200]}"
-        retryable = proc.returncode != 0 or (code.isdigit() and int(code) >= 500)
-        if not retryable or attempt == _HTTP_RETRIES:
-            break
-        time.sleep(_HTTP_BACKOFF * attempt)
+            last = f"exit={proc.returncode} http={code} {proc.stderr[:200]}"
+            retryable = proc.returncode != 0 or (code.isdigit() and int(code) >= 500)
+            if not retryable or attempt == _HTTP_RETRIES:
+                break
+            time.sleep(_HTTP_BACKOFF * attempt)
 
-    dest.unlink(missing_ok=True)
-    raise RuntimeError(f"DOGAMI tile {label} failed after {_HTTP_RETRIES} tries: {last}")
+        raise RuntimeError(
+            f"DOGAMI tile {label} failed after {_HTTP_RETRIES} tries: {last}"
+        )
+    finally:
+        tmp.unlink(missing_ok=True)
 
 
 def _apply_scale_ratio(src_vrt: Path, dst_vrt: Path, ratio: float) -> None:
