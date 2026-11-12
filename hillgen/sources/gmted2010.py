@@ -25,8 +25,9 @@ use the 7.5 arc-second GMTED subset (75darcsec) or 3DEP if you need that.
 
 Priority
 --------
-priority=5, deliberately below every other source (including the 30m
-Copernicus global fallback at priority=10). A global source whose
+priority=5/6/7 (30s/15s/7.5s), deliberately below every other source
+(including the 30m Copernicus global fallback at priority=10). A global
+source whose
 covers() returns True everywhere would otherwise hijack auto-resolution for
 every county build on the platform. The consequence is that 'auto' will NOT
 select this source for a CONUS bbox either — usgs-3dep-1m (priority 85) still
@@ -45,10 +46,12 @@ import requests
 
 from .base import BBox
 
-# Base URL for GMTED2010 30 arc-second mean-statistic global tiles
+# Base URL for the GMTED2010 global tile tree. The resolution directory and
+# the "mea" (mean statistic) segment are appended per-source, so this stops
+# at Global_tiles_GMTED.
 _BASE = (
     "https://edcintl.cr.usgs.gov/downloads/sciweb1/shared/topo/downloads/"
-    "GMTED/Global_tiles_GMTED/300darcsec/mea"
+    "GMTED/Global_tiles_GMTED"
 )
 
 # GMTED2010 global tiling scheme: 20° of latitude by 30° of longitude.
@@ -65,15 +68,27 @@ _LAT_MAX = 70   # southern edge of the northernmost band (70N..90N)
 _LON_MAX = 150  # western edge of the easternmost band (150E..180E)
 
 
-class GMTED2010_30s:
-    """GMTED2010 30 arc-second (~1km), global coverage, for low-zoom builds."""
+class _GMTED2010Base:
+    """Shared machinery for the GMTED2010 resolution family.
 
-    name = "gmted2010-30s"
-    description = (
-        "GMTED2010 30 arc-second (~1km) global DEM — low-zoom/continental builds"
-    )
-    # 30 arc-second at the equator; the real value shrinks with latitude.
-    resolution_m = 926.0
+    GMTED2010 publishes the same global 20°x30° tile grid at three
+    resolutions. They differ only in a URL path segment, a filename suffix
+    and the pixel size, so the download/merge/clip/void-fill pipeline is
+    identical. Subclasses set the four class attributes below.
+    """
+
+    # URL path segment, e.g. "300darcsec"
+    _ARCSEC_DIR: str = ""
+    # Filename statistic suffix, e.g. "mea300"
+    _MEA_SUFFIX: str = ""
+    # Cache filename prefix; MUST differ per resolution or a 30s clip and a
+    # 7.5s clip of the same bbox collide in the cache and the coarser one
+    # silently wins.
+    _FILE_PREFIX: str = ""
+
+    name = ""
+    description = ""
+    resolution_m = 0.0
     priority = 5
 
     # GMTED2010 spans 84°S to 84°N. Outside that there is simply no data.
@@ -178,8 +193,8 @@ class GMTED2010_30s:
                 ew = "E" if lon >= 0 else "W"
                 tile_name = f"{abs(lat):02d}{ns}{abs(lon):03d}{ew}"
                 directory = f"{ew}{abs(lon):03d}"
-                filename = f"{tile_name}_20101117_gmted_mea300.tif"
-                url = f"{_BASE}/{directory}/{filename}"
+                filename = f"{tile_name}_20101117_gmted_{self._MEA_SUFFIX}.tif"
+                url = f"{_BASE}/{self._ARCSEC_DIR}/mea/{directory}/{filename}"
                 tiles.append((tile_name, url))
 
         return tiles
@@ -266,23 +281,69 @@ class GMTED2010_30s:
             return 0
 
         # Any component appearing on the border is sea (or a genuine edge
-        # flat), not a void.
-        edge_labels = set(labels[0, :]) | set(labels[-1, :]) \
-            | set(labels[:, 0]) | set(labels[:, -1])
-        edge_labels.discard(0)
+        # flat), not a void. Resolve membership through a per-label lookup
+        # rather than np.isin: isin against thousands of edge labels is a
+        # sort over every pixel, and at 7.5 arc-second "every pixel" is 344
+        # million of them.
+        border = np.concatenate([
+            labels[0, :], labels[-1, :], labels[:, 0], labels[:, -1],
+        ])
+        is_void = np.ones(count + 1, dtype=bool)
+        is_void[0] = False
+        is_void[np.unique(border)] = False
 
-        interior = zero & ~np.isin(labels, list(edge_labels))
+        void_ids = np.flatnonzero(is_void)
+        if void_ids.size == 0:
+            return 0
+
+        interior = is_void[labels]
         n = int(interior.sum())
         if n == 0:
             return 0
 
-        # Nearest-valid-neighbour fill.
-        _, idx = ndimage.distance_transform_edt(
-            interior, return_distances=True, return_indices=True
-        )
-        band[interior] = band[tuple(i[interior] for i in idx)]
+        # Nearest-valid-neighbour fill, run per component inside its own
+        # bounding box. A whole-raster distance_transform_edt with
+        # return_indices allocates two index planes the size of the raster
+        # (2.75 GB at 7.5 arc-second, on top of the 1.4 GB label array) and
+        # spends that cost measuring distances across thousands of km of
+        # ocean that will never be written. The voids are a handful of small
+        # blocks, so window down to them.
+        boxes = ndimage.find_objects(labels)
+        height, width = band.shape
 
-        profile.update(compress="DEFLATE", tiled=True, bigtiff="IF_SAFER")
+        for lid in void_ids:
+            box = boxes[lid - 1]
+            if box is None:
+                continue
+            ys, xs = box
+            # Pad by one pixel so the window always contains the valid ring
+            # the void is to be filled from.
+            y0, y1 = max(0, ys.start - 1), min(height, ys.stop + 1)
+            x0, x1 = max(0, xs.start - 1), min(width, xs.stop + 1)
+
+            sub = band[y0:y1, x0:x1]
+            target = interior[y0:y1, x0:x1] & (labels[y0:y1, x0:x1] == lid)
+            if not target.any():
+                continue
+
+            # Measure distance against EVERY zero in the window, not just
+            # this component. If a neighbouring void (or a corner of the
+            # ocean) were treated as valid data the fill would propagate a 0
+            # back into the hole it is meant to repair. Only this
+            # component's pixels are written, so ocean inside the window is
+            # read past and left untouched.
+            _, idx = ndimage.distance_transform_edt(
+                sub == 0, return_distances=True, return_indices=True
+            )
+            sub[target] = sub[tuple(i[target] for i in idx)]
+
+        # Forcing tiled=True without a block size inherits whatever the
+        # source profile had; if that was untiled, GDAL rejects the write
+        # ("blocks must be multiples of 16"). Pin the block size explicitly.
+        profile.update(
+            compress="DEFLATE", tiled=True, bigtiff="IF_SAFER",
+            blockxsize=256, blockysize=256,
+        )
         with rasterio.open(path, "w", **profile) as dst:
             dst.write(band, 1)
 
@@ -294,4 +355,50 @@ class GMTED2010_30s:
         lon = (bbox.west + bbox.east) / 2
         ns = "n" if lat >= 0 else "s"
         ew = "w" if lon < 0 else "e"
-        return f"gmted30s_{ns}{abs(lat):.2f}_{ew}{abs(lon):.2f}.tif"
+        return f"{self._FILE_PREFIX}_{ns}{abs(lat):.2f}_{ew}{abs(lon):.2f}.tif"
+
+
+class GMTED2010_30s(_GMTED2010Base):
+    """GMTED2010 30 arc-second (~1km), global. Honest through zoom 7."""
+
+    _ARCSEC_DIR = "300darcsec"
+    _MEA_SUFFIX = "mea300"
+    _FILE_PREFIX = "gmted30s"
+
+    name = "gmted2010-30s"
+    description = (
+        "GMTED2010 30 arc-second (~1km) global DEM — continental builds, z0-7"
+    )
+    # 30 arc-second at the equator; the real value shrinks with latitude.
+    resolution_m = 926.0
+    priority = 5
+
+
+class GMTED2010_15s(_GMTED2010Base):
+    """GMTED2010 15 arc-second (~463m), global. Honest through zoom 8."""
+
+    _ARCSEC_DIR = "150darcsec"
+    _MEA_SUFFIX = "mea150"
+    _FILE_PREFIX = "gmted15s"
+
+    name = "gmted2010-15s"
+    description = (
+        "GMTED2010 15 arc-second (~463m) global DEM — continental builds, z0-8"
+    )
+    resolution_m = 463.0
+    priority = 6
+
+
+class GMTED2010_7_5s(_GMTED2010Base):
+    """GMTED2010 7.5 arc-second (~231m), global. Honest through zoom 9."""
+
+    _ARCSEC_DIR = "075darcsec"
+    _MEA_SUFFIX = "mea075"
+    _FILE_PREFIX = "gmted75s"
+
+    name = "gmted2010-7.5s"
+    description = (
+        "GMTED2010 7.5 arc-second (~231m) global DEM — continental builds, z0-9"
+    )
+    resolution_m = 231.0
+    priority = 7

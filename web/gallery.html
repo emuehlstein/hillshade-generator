@@ -465,8 +465,28 @@ hillgen publish --gallery \
 </footer>
 
 <script>
-const BUCKET_BASE = 'https://scriptedrelief.com';
+// Serve assets from the page's own origin. The site is served on both the apex
+// and www.; hardcoding the apex made every fetch from www. cross-origin, and
+// because PMTiles sends a Range header (not CORS-safelisted) the browser issues
+// a preflight OPTIONS, which CloudFront rejects with 403 (allowed methods are
+// HEAD/GET only). Same-origin requests skip the preflight entirely.
+const BUCKET_BASE = location.origin;
 const GALLERY_PREFIX = `${BUCKET_BASE}/gallery/`;
+
+// Catalog entries store absolute apex URLs, so rewrite them onto the current
+// origin or they stay cross-origin even when BUCKET_BASE is correct.
+function sameOrigin(u) {
+  if (!u) return u;
+  try {
+    const parsed = new URL(u, location.href);
+    if (/(^|\.)scriptedrelief\.com$/i.test(parsed.hostname)) {
+      return location.origin + parsed.pathname + parsed.search;
+    }
+    return parsed.href;
+  } catch (e) {
+    return u;
+  }
+}
 
 // ── PMTiles protocol ───────────────────────────────────────────────────────
 const protocol = new pmtiles.Protocol();
@@ -490,7 +510,8 @@ async function loadGallery() {
     }
     if (!res.ok) throw new Error(`catalog fetch failed: ${res.status}`);
     const catalog = await res.json();
-    const entries = (catalog.submissions || []).slice().reverse(); // newest first
+    const entries = (catalog.submissions || []).slice().reverse() // newest first
+      .map(e => ({ ...e, pmtiles: sameOrigin(e.pmtiles), preview: sameOrigin(e.preview) }));
     allEntries = entries;
     renderGallery(allEntries);
   } catch (err) {

@@ -9,7 +9,7 @@ from .isgs_ilhmp import ISGSILHMPSource
 from .copernicus_dem import CopernicusDEM30m
 from .or_dogami_lidar import ORDOGAMILidar
 from .usgs_3dep_1m import USGS3DEP1m, NoOneMeterCoverageError
-from .gmted2010 import GMTED2010_30s
+from .gmted2010 import GMTED2010_30s, GMTED2010_15s, GMTED2010_7_5s
 
 # Built-in sources. resolve_source(auto) picks the first source whose
 # covers(bbox) is True, so ORDER IS SEMANTIC, not cosmetic.
@@ -31,7 +31,9 @@ _SOURCES = sorted(
         USGS3DEP1m(),          # priority=85 — 1m,     CONUS, only where 1m lidar exists
         USGS3DEP10m(),         # priority=80 — 10m,    CONUS/AK/HI fallback
         CopernicusDEM30m(),    # priority=10 — 30m,    global last-resort
-        GMTED2010_30s(),       # priority=5  — ~1km,   global, low-zoom/continental only
+        GMTED2010_7_5s(),      # priority=7  — ~231m,  global, continental z0-9
+        GMTED2010_15s(),       # priority=6  — ~463m,  global, continental z0-8
+        GMTED2010_30s(),       # priority=5  — ~1km,   global, continental z0-7
     ],
     key=lambda s: -s.priority,
 )
